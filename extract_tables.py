@@ -18,6 +18,95 @@ import pdfplumber
 import pandas as pd
 
 
+# Add these patterns at the top
+TABLE_TITLE_PATTERNS = [
+    r'Table[:\s]+(?:\d+(?:\.\d+)*\s*)?(.+)',  # Table 3.9.2: Something
+    r'(?:\d+(?:\.\d+)*\s*)?(.+?)\s*(?:by|across|in)\s+(?:District|Division)',  # Direct title with by District/Division
+]
+
+def extract_table_info(text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Extract (crop_name, descriptor, scope) from table title text.
+    Example: "Table 3.9.2: Area and Production of Kharif Brinjal by District"
+    Returns: ("Kharif_Brinjal", "area_prod", "dist")
+    """
+    if not text:
+        return None, None, None
+
+    # First try to get clean title without table prefix
+    title = text
+    for pattern in TABLE_TITLE_PATTERNS:
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            title = m.group(1).strip()
+            break
+
+    # Look for crop name patterns
+    crop = None
+    # Pattern: "of X by" or "of X across" or "of X in"
+    m = re.search(r'of\s+(.+?)\s+(?:by|across|in)\s+', title, re.IGNORECASE)
+    if m:
+        crop = m.group(1).strip()
+    # Pattern: "X Production" or "X Area" at start
+    if not crop:
+        m = re.search(r'^(.+?)\s+(?:Production|Area|Yield|Price)', title, re.IGNORECASE)
+        if m:
+            crop = m.group(1).strip()
+
+    # Determine descriptor
+    descriptor = None
+    if re.search(r'area\s+and\s+production', title, re.IGNORECASE):
+        descriptor = 'area_prod'
+    elif re.search(r'production', title, re.IGNORECASE):
+        descriptor = 'prod'
+    elif re.search(r'area', title, re.IGNORECASE):
+        descriptor = 'area'
+    elif re.search(r'yield', title, re.IGNORECASE):
+        descriptor = 'yield'
+    elif re.search(r'price', title, re.IGNORECASE):
+        descriptor = 'price'
+
+    # Determine scope
+    scope = None
+    if re.search(r'by\s+district', title, re.IGNORECASE):
+        scope = 'dist'
+    elif re.search(r'by\s+division', title, re.IGNORECASE):
+        scope = 'div'
+    elif re.search(r'by\s+upazila', title, re.IGNORECASE):
+        scope = 'upz'
+
+    return crop, descriptor, scope
+
+def make_table_filename(title: str, page: int) -> str:
+    """
+    Generate consistent filename from table title.
+    Example: "Table 3.9.2: Area and Production of Kharif Brinjal by District"
+    Returns: "232_Kharif_Brinjal_area_prod_dist.csv"
+    """
+    crop, descriptor, scope = extract_table_info(title)
+
+    if not crop:
+        return f"{page}_untitled_table.csv"
+
+    # Clean crop name
+    crop = re.sub(r'[^A-Za-z0-9]+', '_', crop)
+    crop = re.sub(r'_+', '_', crop).strip('_')
+
+    parts = [str(page), crop]
+    if descriptor:
+        parts.append(descriptor)
+    if scope:
+        parts.append(scope)
+
+    return "_".join(parts) + ".csv"
+
+def should_append_table(curr_title: str, prev_title: str) -> bool:
+    """Only append if explicit continuation marker present"""
+    if not curr_title or not prev_title:
+        return False
+    return bool(re.search(r'\bContd\.?|\bContinued\b', curr_title, re.IGNORECASE))
+
+
 def sanitize_filename(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r'\s+', '_', name)
