@@ -1,0 +1,33 @@
+Type of Fishing,"Number of
+Craft
+(Trawler/
+Boat)","Number of
+Unit
+(Gear/Net)",Catch in Metric Ton,,,
+,,,Shrimp,Hilsa,"Other
+Fish",Total
+A. Industrial,,,,,,
+Trawl Fishing,,,,,,
+a) Shrimp Trawler,37,111,2621,0,2749,5370
+b) Fish Trawler,216,648,1061,11060,102596,114717
+TOTAL INDUSTRIAL,253,759,3682,11060,105345,120087
+B. Artisanal,,,,,,
+1. Gill Net Fishing,,,,,,
+a) Mechanized,20359,77768,0,251140,66545,317685
+b) Non-Mechanized,16831,40585,0,22300,20550,42850
+SUB-TOTAL,37190,118353,0,273440,87095,360535
+2. Set Bag Net Fishing,,,,,,
+a) Seasonal (MB),10000,22404,30600,0,102185,132785
+b) Seasonal (NMB),5200,10000,10100,0,1590,11690
+c) All Seasonal (NMB),5550,10025,1300,0,425,1725
+SUB-TOTAL,20750,42429,42000,0,104200,146200
+3. Long Line Fishing,,,,,,
+a) Jew Fish Long Line,,,,,,
+Mechanized,2500,10191,0,0,16550,16550
+Non-Mechanized,400,900,0,0,500,500
+b) Other Long Line (NMB),325,772,0,0,200,200
+SUB-TOTAL,3225,11863,0,0,17250,17250
+4. Trammel Net Fishing (NMB),131,422,1140,0,4150,5290
+5. Other Gears Fishing (NMB),6373,15640,2025,0,3300,5325
+TOTAL ARTISANAL,67669,188707,45165,273440,215995,534600
+GRAND TOTAL (A+B),67922,189466,48847,284500,321340,654687

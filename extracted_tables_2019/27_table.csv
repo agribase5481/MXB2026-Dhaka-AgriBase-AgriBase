@@ -1,0 +1,69 @@
+"Sl.
+No","Physiographic
+Unit",Agro-Ecological Zone (AEZ),,"Area
+excluding
+river beds
+(acre)","Texture = T
+pH = pH
+Organic
+Matter
+Status = 0.m",Land Type,,,,,
+,,"AEZ
+No.",Name,,,High,"Medium
+High","Medium
+Low",Low,"Very
+Low","Home-
+stead +
+Water"
+1,2,3,4,5,6,7,8,9,10,11,12
+"58
+Type (%) 34 1 - - 7
+Old Himalayan Sandy
+Old Himalayan T : Loamy - - - -
+1. 1. Piedmont 990400 loam
+Piedmont Plain pH: 4.5-5.5 - - - -
+Plain 4.5-5.5
+0.m: Low - - - -
+Low",,,,,,,,,,,
+"72
+Type (%) 2 - - - 26
+Sandy
+Teesta Flood Active Teesta T : - - - - -
+2. 2. 205100 loam
+Plain Flood Plain pH: - - - - -
+6.0-6.6
+0.m: - - - - -
+Low",,,,,,,,,,,
+"Type (%) 35 51 4 1 - 9
+Teesta Meander T : Loamy Loamy - - - -
+3. 2339595
+Flood Plain pH: 5.4-6.5 6.0-6.5 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"Type (%) 23 44 14 4 1 14
+Karatoya-Bangali
+Teesta Flood T : Silt-loam Clayey - - - -
+3. 4. Flood 635555
+Plain pH: 5.4-5.7 5.4-5.7 - - - -
+Plain
+0.m: Low Low - - - -",,,,,,,,,,,
+"4. LowerAtraiBasin 5. LowerAtrai 210285 Type (%) 2 8 21 65 - 4
+Basin T : - - Clayey Clayey - -
+pH: - - 4.8-6.0 4.8-6.0 - -
+0.m: - - Medium Medium - -",,,,,,,,,,,
+"5. Lower 6. Lower 31875 Type (%) - 10 60 - - 30
+Punarbhaba Punarbhaba T : - - Clayey - - -
+Flood Plain Flood pH: - - 4.5 - - -
+Plain 0.m: - - Medium - - -",,,,,,,,,,,
+"6. Brahmaputra 7. Active 788265 Type (%) 5 37 20 8 - 30
+Flood Plain Brahmaputra- T : - Sandy/Silt Silty - - -
+Jamuna Flood pH: - y 7.5-7.9 - - -
+Plain 0.m: - 7.5-7.9 Low - - -
+Very low",,,,,,,,,,,
+"8. Young 1463850 Type (%) 18 42 19 9 - 12
+Brahmaputra- T : Loamy Loamy Loamy - - -
+Jamuna Flood pH: 5.5-6.8 5.5-6.8 5.5-6.8 - - -
+Plain 0.m: Low Low Low - - -",,,,,,,,,,,
+"9. Old Brahmaputra 1786570 Type (%) 28 35 20 7 - 10
+Flood T : Silt-loam Loamy Clayey - - -
+Plain pH: 5.1-5.6 5.1-5.6 5.1-5.6 - - -
+0.m: Low Medium Medium - - -",,,,,,,,,,,

@@ -1,0 +1,110 @@
+"Sl.
+No",Physiographic Unit,Agro-Ecological Zone (AEZ),,"Area
+excluding
+river beds
+(acre)","Texture = T
+pH = pH
+Organic
+Matter
+Status = 0.m",Land Type,,,,,
+,,"AEZ
+No.",Name,,,High,"Medium
+High","Medium
+Low",Low,"Very
+Low","Home-
+stead +
+Water"
+1,2,3,4,5,6,7,8,9,10,11,12
+"7. GangesRiver 10. Active Ganges Flood 823850 Type (%) 12 33 18 4 - 33
+Flood Plain Plain T : - Loamy Clayey - - -
+pH: - 6.9-7.9 6.9-7.9 - - -
+0.m: - Low Medium - - -",,,,,,,,,,,
+"11. HighGangesRiver 3263025 Type (%) 43 32 12 2 - 11
+Flood Plain T : Silt-loam Loamy Clayey - - -
+pH: 6.1-7.9 6.1-7.9 6.1-7.9 - - -
+0.m: Low Low Medium - - -",,,,,,,,,,,
+"12. LowGangesRiver 1968935 Type (%) 13 29 31 14 2 11
+Flood Plain T : Silt-loam Silt-clay Clayey - - -
+pH: 6.2-7.7 6.2-7.7 6.2-7.4 - - -
+0.m: Medium Medium Medium - - -",,,,,,,,,,,
+"8. Ganges Tidal 13. Ganges Tidal Flood 4217100 Type (%) 2 78 2 - - 18
+Flood Plain Plain T : - Loamy - - - -
+pH: - 6.5-7.0 - - - -
+0.m: - Medium - - - -",,,,,,,,,,,
+"9. Gopalganj- 14. Gopalganj-Khulna 555245 Type (%) 3 13 41 28 11 4
+Khulna Beel Bils T : - Clayey Clayey Clayey - -
+pH: - 5.4 5.4 5.4 - -
+0.m: - Medium Medium Medium - -",,,,,,,,,,,
+"10. Arial Beel 15. Arial Beel 35585 Type (%) - 13 - 73 - 14
+T : - Clayey - Clayey - -
+pH: - 5.4 - 5.4 - -
+0.m: - Medium - Medium - -",,,,,,,,,,,
+"11. MeghnaRiver 16. MiddleMeghnaRiver 384250 Type (%) - 8 29 25 11 27
+Flood Plain Flood Plain T : - - Loamy Loamy - -
+pH: - - 4.9-5.5 4.4-5.5 - -
+0.m: - - Low Low - -",,,,,,,,,,,
+"17. LowerMeghnaRiver 224620 Type (%) 14 28 31 - - 27
+Flood Plain T : Silt-loam Silt-loam Silt-loam - - -
+pH: 5.0-6.0 5.0-6.0 5.5-6.0 - - -
+0.m: Medium Medium Medium - - -",,,,,,,,,,,
+"12. Meghna 18. Young Meghna 2290420 Type (%) - 45 7 - - 48
+Estuarine Flood Estuarine T : - Silt-loam - - - -
+Plain Flood Plain pH: - 6.1-6.8 - - - -
+0.m: - Medium - - - -",,,,,,,,,,,
+"19. Old Meghna 1912595 Type (%) 2 24 33 21 3 17
+Estuarine T : - Silt-loam Loamy Clayey - -
+Flood Plain pH: - 5.0-6.1 5.5-6.5 5.5-6.5 - -
+0.m: - Medium Medium Medium - -",,,,,,,,,,,
+"13. Surma-Kusiyara 20. Eastern Surma- 1142120 Type (%) 5 25 20 36 - 14
+Flood plain Kusiyara T : - Silt-loam Clayey Clayey - -
+Flood Plain pH: - 4.7-6.9 4.7-5.5 4.7-5.5 - -
+0.m: Medium Medium Medium - -",,,,,,,,,,,
+"21. SylhetBasin 1130015 Type (%) - 4 19 43 23 11
+T : - - Silt-loam Clayey Clayey -
+pH: - - 4.7-4.9 4.7-4.9 4.7-4.9 -
+0.m: - - High High High -",,,,,,,,,,,
+"14. Northern and 22. Northern and 997810 Type (%) 33 31 16 9 1 10
+Eastern Eastern T : Sandy- Loamy Silt-loam - - -
+Piedmont Plains Piedmont Plains pH: loam 4.5-5.8 4.5-5.8 - - -
+0.m: 4.5-5.8 Medium Medium - - -
+Medium",,,,,,,,,,,
+,,"AEZ
+No.",Name,,,High,"Medium
+High","Medium
+Low",Low,"Very
+Low","Home-
+stead +
+Water"
+1,2,3,4,5,6,7,8,9,10,11,12
+"15. Chattogram 23. Chattogram 919230 Type (%) 17 43 13 - - 27
+CoastalPlain Coastal Plain T : Silt-loam Silt-loam - - - -
+pH: 5.6 5.6 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"16. St. Martins Coral 24. St. Martins 1975 Type (%) 33 63 2 - - 2
+Island Coral Island T : Sandy Sandy-loam - - - -
+pH: 7.0-7.5 7.0-7.5 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"17. Barind Tract 25. Level Barind 1247635 Type (%) 30 55 4 2 - 9
+Tract T : Loamy Loamy - - - -
+pH: 5.0-5.7 5.0-5.7 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"26. High Barind 395370 Type (%) 93 1 - - - 6
+Tract T : Loamy - - - - -
+pH: 4.8-5.9 - - - - -
+0.m: Low - - - - -",,,,,,,,,,,
+"27. North-Eastern 266625 Type (%) 36 56 1 - - 7
+Barind Tract T : Loamy Loamy - - - -
+pH: 4.8-5.9 4.8-5.9 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"18. Madhupur Tract 28. Madhupur 1048715 Type (%) 56 18 7 9 - 10
+Tract T : Loamy Loamy - - - -
+pH: 4.8-5.5 4.8-5.5 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,
+"19. Northern and 29. Northern and 4490150 Type (%) 92 2 1 - - 5
+EasternHills Eastern Hills T : Loamy - - - - -
+pH: 4.5-4.9 - - - - -
+0.m: Low - - - - -",,,,,,,,,,,
+"20. Akhaura Terrace 30. Akhaura Terrw 27920 Type (%) 55 11 10 15 3 6
+sace T : Loamy Loamy - - - -
+pH: 5.5-6.5 5.5-6.5 - - - -
+0.m: Low Low - - - -",,,,,,,,,,,

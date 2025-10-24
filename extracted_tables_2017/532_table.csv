@@ -1,0 +1,10 @@
+Culture Method,"Production
+Range","Number
+of Pond",Area,,Production,,MT/Ha,"Growth
+Rate %"
+,,,(Ha),%,(MT),%,,
+Extensive,<1.5MT/Ha,321107,36196,9.72,42359,2.46,1.170,(-) 29.20
+Semi-intensive,1.5-4 MT/Ha,1352429,233776,62.77,780958,45.41,3.341,2.03
+Intensive,4>10MT/Ha,415781,87895,23.60,542923,31.57,6.177,7.91
+Highly Intensive,10 > MT/Ha,77786,14538,3.90,353543,20.56,24.319,24.10
+Total,,2167103,372405,100.00,1719783,100.00,4.618,6.60
