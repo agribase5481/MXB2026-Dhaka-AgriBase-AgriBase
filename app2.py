@@ -51,7 +51,7 @@ def get_district_names():
         districts = query_db("SELECT DISTINCT District_Division FROM Aman_total_dist ORDER BY District_Division")
 
     if not districts and table_exists('wheat_estimate'): # Fallback
-         districts = query_db("SELECT DISTINCT District_Division FROM wheat_estimate ORDER BY District_Division")
+         districts = query_db("SELECT DISTINCT district__division FROM wheat_estimate ORDER BY District_Division")
 
     # Clean the list: filter out divisions, totals, and empty strings
     cleaned_districts = []
