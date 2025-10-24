@@ -183,7 +183,7 @@ def index():
 @app.route('/area_summary')
 def area_summary():
     try:
-        summary_data = query_db("SELECT * FROM area_summary")
+        summary_data = query_db("SELECT * FROM crops_summary")
     except sqlite3.OperationalError:
         flash("Could not find 'area_summary' table. Please check your database.", 'danger')
         summary_data = []
@@ -203,7 +203,7 @@ def area_summary():
 @app.route('/yield_summary')
 def yield_summary():
     try:
-        summary_data = query_db("SELECT * FROM yield_summery")
+        summary_data = query_db("SELECT * FROM Crops_indices")
     except sqlite3.OperationalError:
         flash("Could not find 'yield_summery' table. Please check your database.", 'danger')
         summary_data = []
