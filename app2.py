@@ -56,7 +56,7 @@ def get_district_names():
     # Clean the list: filter out divisions, totals, and empty strings
     cleaned_districts = []
     for d in districts:
-        dist_name = d['District_Division']
+        dist_name = d['unnamed_1']
         if (dist_name and
             'Division' not in dist_name and
             'Divison' not in dist_name and
