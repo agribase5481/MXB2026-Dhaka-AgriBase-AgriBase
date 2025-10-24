@@ -90,9 +90,9 @@ CROP_HIERARCHY = {
 # I built this by matching CROP_HIERARCHY to your CSV screenshots.
 CROP_TO_TABLE_MAP = {
     # Major Cereals
-    "Aus Rice": "aus_total",
-    "Aman Rice": "aman_total",
-    "Boro Rice": "boro_total",
+    "Aus Rice": "Aus_total_dsit",
+    "Aman Rice": "Aman_total_dist",
+    "Boro Rice": "Boro_total_dist",
     "Wheat": "wheat_estimate",
     # Minor Cereals
     "Maize": "maize_area_prod_dist",
