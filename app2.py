@@ -240,7 +240,7 @@ def crop_analysis():
             return redirect(url_for('crop_analysis'))
 
         try:
-            query = f"SELECT * FROM {table_name} WHERE District_Division = ?"
+            query = f"SELECT * FROM {table_name} WHERE unnamed_1 = ?"
             results = query_db(query, [selected_district_form])
 
             if results:
