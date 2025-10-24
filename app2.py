@@ -295,7 +295,7 @@ def top_producers():
                  return redirect(url_for('top_producers'))
 
             query = f"""
-                SELECT District_Division, "2023-24_Production_MT"
+                SELECT unnamed_1, "2023-24_Production_MT"
                 FROM {table_name}
                 WHERE "2023-24_Production_MT" IS NOT NULL AND TRIM("2023-24_Production_MT") != ''
                 AND District_Division != 'Bangladesh' AND District_Division NOT LIKE '%Division'
