@@ -1,7 +1,8 @@
-# PDF table extractor with resume support (--start / --end).
+# PDF table extractor tuned to produce shortened, page-prefixed CSV filenames.
 # - Uses pdfplumber
-# - Appends to existing CSVs in out_dir when header overlap suggests continuation
-# - Processes only pages in [start, end] if provided
+# - Will append only when a table truly continues across contiguous pages (strict checks)
+# - Produces filenames like "8_Potato_Productivity_Div.csv" (prefix = starting page)
+# - Attempts to avoid merging/splitting errors by using stricter continuation heuristics
 import argparse
 import csv
 import gc
@@ -18,7 +19,10 @@ def sanitize_filename(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r'\s+', '_', name)
     name = re.sub(r'[^0-9A-Za-z_\-\.]', '', name)
-    return name[:120] if len(name) > 120 else (name or "table")
+    name = re.sub(r'_+', '_', name).strip('_')
+    if not name:
+        name = "table"
+    return name[:120] if len(name) > 120 else name
 
 
 def is_mostly_text(row: List[str]) -> bool:
@@ -62,6 +66,7 @@ def title_from_words_above(table_bbox, words, max_above_px=200) -> Optional[str]
         return None
     best_key = sorted(lines.keys(), reverse=True)[0]
     raw = " ".join(lines[best_key]).strip()
+    # keep raw for detection of "Contd" but strip it for title
     m = re.search(r'(?:Table\s*\d+\s*[:\-\–]?\s*)?(.*?)(?:\bContd\.?|\bContinued\.?)?$', raw, flags=re.I)
     title = m.group(1).strip() if m else raw
     if len(title) < 3 or re.fullmatch(r'[-\s\.\d]+', title):
@@ -108,7 +113,6 @@ def make_unique(cols: List[str]) -> List[str]:
 
 
 def read_csv_header(path: Path) -> List[str]:
-    # read header using csv module (fast, low mem)
     try:
         with path.open('r', encoding='utf-8', errors='replace') as f:
             reader = csv.reader(f)
@@ -131,7 +135,8 @@ def load_existing_csv_index(out_dir: Path):
     return index
 
 
-def find_best_existing_csv(header: List[str], index, min_overlap=0.5) -> Optional[Path]:
+def find_best_existing_csv(header: List[str], index, min_overlap=0.9) -> Optional[Path]:
+    # Provided for compatibility, but script will avoid appending to arbitrary old CSVs by default.
     best = None
     best_score = 0.0
     for item in index:
@@ -145,7 +150,6 @@ def find_best_existing_csv(header: List[str], index, min_overlap=0.5) -> Optiona
 
 
 def safe_to_csv_append(df: pd.DataFrame, path: Path, target_header: List[str]):
-    # align df to target_header (case-insensitive match), then append without header
     mapped = []
     for c in df.columns:
         matches = [tc for tc in target_header if tc.lower() == c.lower()]
@@ -155,6 +159,74 @@ def safe_to_csv_append(df: pd.DataFrame, path: Path, target_header: List[str]):
     df.to_csv(path, mode='a', header=False, index=False)
 
 
+def shorten_name_from_text(text: str) -> str:
+    # try to generate a compact, descriptive name from arbitrary title/header text
+    text = (text or "").strip()
+    text = re.sub(r'\s+', '_', text)
+    text = re.sub(r'[^0-9A-Za-z_\-]', '', text)
+    text = re.sub(r'_+', '_', text).strip('_')
+    if not text:
+        return "Table"
+    # try to extract "of_<Crop>_by" pattern
+    m = re.search(r'of_([A-Za-z0-9]+?)_by', text, flags=re.I)
+    if m:
+        crop = m.group(1).title()
+        descriptor = 'Table'
+        if re.search(r'productiv', text, flags=re.I):
+            descriptor = 'Productivity'
+        elif re.search(r'expend', text, flags=re.I):
+            descriptor = 'Expenditure'
+        elif re.search(r'area', text, flags=re.I):
+            descriptor = 'Area'
+        suffix = 'Div' if re.search(r'division|div', text, flags=re.I) else ''
+        parts = [crop, descriptor]
+        if suffix:
+            parts.append(suffix)
+        return sanitize_filename("_".join(parts))
+    # fallback: pick up first capitalized token or first token
+    tokens = [t for t in re.split(r'[_\s]+', text) if t]
+    stop = {'and', 'of', 'by', 'per', 'in', 'the', 'table', 'division', 'div'}
+    tokens = [t for t in tokens if t.lower() not in stop]
+    crop = None
+    for t in tokens:
+        if t and t[0].isalpha() and t[0].isupper():
+            crop = t
+            break
+    if not crop and tokens:
+        crop = tokens[0]
+    crop_clean = re.sub(r'[^A-Za-z0-9]', '', (crop or 'Data')).title()
+    descriptor = 'Table'
+    if re.search(r'productiv', text, flags=re.I):
+        descriptor = 'Productivity'
+    elif re.search(r'expend', text, flags=re.I):
+        descriptor = 'Expenditure'
+    elif re.search(r'area', text, flags=re.I):
+        descriptor = 'Area'
+    suffix = 'Div' if re.search(r'division|div', text, flags=re.I) else ''
+    parts = [crop_clean, descriptor]
+    if suffix:
+        parts.append(suffix)
+    return sanitize_filename("_".join([p for p in parts if p]))
+
+
+def build_short_filename(title: Optional[str], header: List[str], starting_page: int) -> Path:
+    if title:
+        base = shorten_name_from_text(title)
+    else:
+        # use first one or two header tokens to name
+        tokens = [re.sub(r'[^A-Za-z0-9]', '', h).title() for h in header if h and re.sub(r'[^A-Za-z0-9]', '', h)]
+        tokens = tokens[:2] if tokens else ['Table']
+        base = sanitize_filename("_".join(tokens))
+        # try to add descriptor if header hints at productivity/expenditure
+        joined = "_".join(tokens)
+        if re.search(r'productiv', joined, flags=re.I):
+            base = f"{base}_Productivity"
+        elif re.search(r'expend', joined, flags=re.I):
+            base = f"{base}_Expenditure"
+    fname = f"{starting_page}_{base}.csv"
+    return Path(fname)
+
+
 def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Optional[int]):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,7 +234,7 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
     existing_index = load_existing_csv_index(out_dir)
     print(f"Found {len(existing_index)} existing CSVs in {out_dir}", flush=True)
 
-    last_table = None  # {name, header, last_page, csv_path}
+    last_table = None  # {"start_page", "header", "last_page", "csv_path"}
     saved_files = set()
 
     with pdfplumber.open(pdf_path) as pdf:
@@ -182,7 +254,7 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                 print(f"[page {pnum}] find_tables error: {exc}", flush=True)
                 tables = []
             if not tables:
-                # keep last_table to allow contiguous continuation across empty pages if needed
+                # keep last_table to allow contiguous continuation detection on next page
                 continue
 
             try:
@@ -213,48 +285,37 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                 except Exception:
                     title = None
 
-                # Determine continuation logic:
                 appended = False
-                # 1) If title missing and last_table in this run is contiguous and header matches -> append
-                if title is None and last_table and pnum == last_table["last_page"] + 1 and overlap_ratio(header, last_table["header"]) >= 0.5:
-                    try:
-                        safe_to_csv_append(df, last_table["csv_path"], last_table["header"])
-                        last_table["last_page"] = pnum
-                        appended = True
-                        print(f"[page {pnum}] appended to last run table {last_table['csv_path'].name}", flush=True)
-                    except Exception as exc:
-                        print(f"[page {pnum}] append to last_table failed: {exc}", flush=True)
-
-                # 2) If not appended, try matching against existing CSVs from previous run
-                if not appended and title is None and existing_index:
-                    candidate = find_best_existing_csv(header, existing_index, min_overlap=0.5)
-                    if candidate:
-                        target_hdr = [c for c in read_csv_header(candidate)]
-                        target_hdr = make_unique(normalize_header(target_hdr))
-                        try:
-                            safe_to_csv_append(df, candidate, target_hdr)
-                            # update index entry mtime
-                            for it in existing_index:
-                                if it["path"] == candidate:
-                                    it["mtime"] = candidate.stat().st_mtime
-                            last_table = {"name": candidate.stem, "header": target_hdr, "last_page": pnum, "csv_path": candidate}
-                            appended = True
-                            print(f"[page {pnum}] appended to existing CSV {candidate.name}", flush=True)
-                        except Exception as exc:
-                            print(f"[page {pnum}] append to existing CSV failed: {exc}", flush=True)
+                # strict continuation detection:
+                if last_table:
+                    # contiguous pages only
+                    if pnum == last_table["last_page"] + 1:
+                        header_overlap = overlap_ratio(header, last_table["header"])
+                        # require strong overlap and similar column count to consider continuation
+                        cols_close = abs(len(header) - len(last_table["header"])) <= 2
+                        if header_overlap >= 0.8 and cols_close:
+                            try:
+                                safe_to_csv_append(df, last_table["csv_path"], last_table["header"])
+                                last_table["last_page"] = pnum
+                                appended = True
+                                print(f"[page {pnum}] appended (continued) to {last_table['csv_path'].name}", flush=True)
+                            except Exception as exc:
+                                print(f"[page {pnum}] append to last_table failed: {exc}", flush=True)
 
                 if appended:
                     del df
                     gc.collect()
                     continue
 
-                # New table: create file (use title if present)
-                name = sanitize_filename(title) if title else f"page{pnum:03d}_table{tidx:02d}"
-                csv_path = out_dir / f"{name}.csv"
-                base = csv_path.stem
+                # Do NOT append to arbitrary existing CSVs from previous runs to avoid accidental merges.
+                # New table: create file using short name and starting page prefix
+                short_path = build_short_filename(title, header, pnum)
+                csv_path = out_dir / short_path.name
+                base_stem = csv_path.stem
                 k = 1
+                # If multiple different tables on same starting page produce same short name, disambiguate
                 while csv_path.exists():
-                    csv_path = out_dir / f"{base}_{k}.csv"
+                    csv_path = out_dir / f"{base_stem}_{k}.csv"
                     k += 1
                 try:
                     df.to_csv(csv_path, index=False)
@@ -262,113 +323,24 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                 except Exception as exc:
                     print(f"[page {pnum}] write failed ({exc}), retrying with utf-8-sig", flush=True)
                     df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+
                 saved_files.add(str(csv_path))
-                # update index for resume ability
-                existing_index.append({"path": csv_path, "header": list(df.columns), "mtime": csv_path.stat().st_mtime})
-                last_table = {"name": name, "header": list(df.columns), "last_page": pnum, "csv_path": csv_path}
+                # update last_table to allow proper continuation detection
+                last_table = {
+                    "start_page": pnum,
+                    "header": list(df.columns),
+                    "last_page": pnum,
+                    "csv_path": csv_path
+                }
 
                 del df
                 gc.collect()
 
-
-
-    print(f"Done. {len(saved_files)} new tables saved/updated in {out_dir}", flush=True)
-
-# ...existing code...
-
-
-def get_starting_page_from_fname(fname):
-    """
-    Try to parse the starting page number from a filename like:
-      "8.6_Productivity_and_expenditure_of_Potato_by_Division.csv"
-      "8-9_Some_table.csv" or "12_Something.csv"
-    Returns int or None.
-    """
-    base = os.path.basename(fname)
-    # try leading number before dot/hyphen/underscore/space
-    m = re.match(r'^\s*(\d+)(?:[.\-_\s]|$)', base)
-    if m:
-        return int(m.group(1))
-    # try any pattern like "..._8_..." or "...-8_..."
-    m = re.search(r'[_\-\s](\d+)(?:[_\-\s]|$)', base)
-    if m:
-        return int(m.group(1))
-    return None
-
-def shorten_name(original_filename):
-    """
-    Create a short, human-readable filename from a verbose original filename.
-    Examples:
-      "8.6_Productivity_and_expenditure_of_Potato_by_Division.csv" -> "Potato_Productivity_Div.csv"
-      fallback -> "<Token>_Table.csv"
-    """
-    base = os.path.splitext(os.path.basename(original_filename))[0]
-    # remove leading numbers and separators
-    base = re.sub(r'^[\d\.\-_\s]+', '', base)
-
-    # try pattern: _of_<crop>_by_
-    m = re.search(r'_of_([^_]+?)_by_', base, flags=re.IGNORECASE)
-    if m:
-        crop = m.group(1)
-    else:
-        # fallback: split on separators and remove common stop words
-        tokens = [t for t in re.split(r'[_\s]+', base) if t]
-        stop = {'and','of','by','per','in','the','table','division','div'}
-        tokens = [t for t in tokens if t.lower() not in stop]
-        # prefer a token that looks like a crop (capitalized) otherwise last token
-        crop = None
-        for t in tokens:
-            if t and t[0].isalpha() and t[0].isupper():
-                crop = t
-                break
-        if not crop and tokens:
-            crop = tokens[-1]
-        if not crop:
-            crop = 'Data'
-
-    # sanitize crop token
-    crop_clean = re.sub(r'[^A-Za-z0-9]', '', crop).title()
-
-    # decide descriptor
-    if re.search(r'productiv', base, flags=re.IGNORECASE):
-        descriptor = 'Productivity'
-    elif re.search(r'expend|expendit', base, flags=re.IGNORECASE):
-        descriptor = 'Expenditure'
-    elif re.search(r'area', base, flags=re.IGNORECASE):
-        descriptor = 'Area'
-    else:
-        descriptor = 'Table'
-
-    # prefer "Div" when division appears in original name
-    suffix = 'Div' if re.search(r'division|div', base, flags=re.IGNORECASE) else ''
-
-    parts = [crop_clean, descriptor]
-    if suffix:
-        parts.append(suffix)
-    short = '_'.join([p for p in parts if p]) + '.csv'
-    return short
-
-# ...existing code...
-# assume your extraction loop yields a list of created csv file paths -> generated_csvs
-# and you have an output_dir variable where files should live.
-# Replace or integrate the following saving/renaming logic into your file-export section.
-
-# Example integration:
-# for src_path in generated_csvs:
-#     start_page = get_starting_page_from_fname(src_path)
-#     shortname = shorten_name(src_path)
-#     prefix = f"{start_page}_" if start_page is not None else ""
-#     dst_name = prefix + shortname
-#     dst_path = os.path.join(output_dir, dst_name)
-#     # move/rename the file into final destination
-#     os.makedirs(output_dir, exist_ok=True)
-#     os.replace(src_path, dst_path)
-
-# ...existing code...
+    print(f"Done. {len(saved_files)} new tables saved in {out_dir}", flush=True)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with resume support")
+    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with strict continuation rules and shortened names")
     parser.add_argument("pdf", help="PDF file path")
     parser.add_argument("out", help="Output directory for CSVs")
     parser.add_argument("--start", type=int, default=None, help="Start page (1-based)")
