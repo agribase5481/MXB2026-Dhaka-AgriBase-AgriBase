@@ -48,7 +48,7 @@ def get_district_names():
     # We must use the new, cleaned table name.
     districts = []
     if table_exists('aman_total'):
-        districts = query_db("SELECT DISTINCT District_Division FROM aman_total ORDER BY District_Division")
+        districts = query_db("SELECT DISTINCT District_Division FROM Aman_total_dist ORDER BY District_Division")
 
     if not districts and table_exists('wheat_estimate'): # Fallback
          districts = query_db("SELECT DISTINCT District_Division FROM wheat_estimate ORDER BY District_Division")
