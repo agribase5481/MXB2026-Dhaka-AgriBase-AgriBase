@@ -1,0 +1,43 @@
+Bangladesh/Division,Local Bona Aus,None,None_1,None_2
+None,"Yield rate(m.ton) per
+acre",Expenditure per acre in Tk.,"Price of produced crops per
+acre ( Tk.)","Price of by products per
+acre (Tk)"
+1,2,3,4,5
+Bangladesh,0.84,12755,18433,4446
+Barishal Division,0.84,13263,17863,4589
+Chattogram Division,0.89,10937,19498,3205
+Dhaka Division,0.79,13748,16033,4857
+Khulna Division,0.79,13229,16323,4766
+Mymensingh Division,0.80,14871,19136,4964
+Rajshahi Division,0.86,13984,20645,6320
+Rangpur Division,0.75,13773,17529,4954
+Sylhet Division,0.81,13287,18531,3236
+Local Ropa Aus,None,None,None,None
+Bangladesh,1.10,18155,24788,4171
+Barishal Division,1.08,16434,23253,5095
+Chattogram Division,1.11,16967,24453,3737
+Dhaka Division,1.17,19046,24395,4298
+Khulna Division,1.10,17792,22784,3303
+Mymensingh Division,1.15,18453,27696,6841
+Rajshahi Division,1.11,18082,26754,4139
+Rangpur Division,1.07,18734,24326,4883
+Sylhet Division,1.09,20901,26088,3616
+HYV Aus,None,None,None,None
+Bangladesh,1.59,25921,35582,5744
+Barishal Division,1.57,25831,33849,6470
+Chattogram Division,1.64,23067,36949,5088
+Dhaka Division,1.53,25925,31192,6066
+Khulna Division,1.60,24389,32526,5823
+Mymensingh Division,1.61,25859,37638,6868
+Rajshahi Division,1.55,30206,37184,6652
+Rangpur Division,1.65,25249,39578,6467
+Sylhet Division,1.59,26097,36142,4052
+Hybrid Aus,None,None,None,None
+Bangladesh,1.88,29775,40746.00,6757
+Barishal Division,1.74,25525,36851,6606
+Chattogram Division,1.92,23285,42333,7730
+Dhaka Division,1.81,26403,42567,7155
+Khulna Division,1.87,24909,45209,7500
+Mymensingh Division,1.94,24910,48438,6573
+Rajshahi Division,1.86,20275,44685,3767

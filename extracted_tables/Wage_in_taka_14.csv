@@ -1,0 +1,41 @@
+District name,Dec-2024,None,None_1,None_2,None_3,None_4,None_5,None_6,None_7,None_8,None_9,None_10,None_11,None_12,None_13,None_14,None_15,None_16,None_17,None_18,None_19,None_20,None_21,None_22
+None,With Food,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,"Without Food
+(in TK)",None,None,None,None,None
+None,One meal,None,None,None,None,None,Two meal,None,None,None,None,None,Three meal,None,None,None,None,None,None,None,None,None,None,None
+None,Male,None,None,Female,None,None,Male,None,None,Female,None,None,Male,None,None,Female,None,None,Male,None,None,Female,None,None
+Banderban,671,None,None,471,None,None,621,None,None,432,None,None,571,None,None,382,None,None,673,None,None,480,None,None
+Khagrachari,450,None,None,300,None,None,0,None,None,0,None,None,0,None,None,0,None,None,494,None,None,404,None,None
+Rangamati,446,None,None,317,None,None,425,None,None,300,None,None,0,None,None,0,None,None,536,None,None,373,None,None
+Chattogram,706,None,None,476,None,None,631,None,None,450,None,None,558,None,None,409,None,None,776,None,None,542,None,None
+Cox’sbazar,800,None,None,425,None,None,740,None,None,390,None,None,800,None,None,0,None,None,852,None,None,475,None,None
+Cumilla,606,None,None,438,None,None,550,None,None,388,None,None,500,None,None,325,None,None,763,None,None,473,None,None
+Chandpur,0,None,None,0,None,None,0,None,None,0,None,None,0,None,None,0,None,None,600,None,None,0,None,None
+Brahmmanbaria,500,None,None,425,None,None,465,None,None,0,None,None,438,None,None,367,None,None,578,None,None,500,None,None
+Noakhali,650,None,None,0,None,None,600,None,None,0,None,None,525,None,None,0,None,None,732,None,None,0,None,None
+Lakshmipur,0,None,None,0,None,None,0,None,None,0,None,None,0,None,None,0,None,None,510,None,None,0,None,None
+Feni,700,None,None,0,None,None,0,None,None,0,None,None,0,None,None,0,None,None,750,None,None,0,None,None
+Chattogram Division,614,None,None,407,None,None,576,None,None,392,None,None,565,None,None,371,None,None,660,None,None,464,None,None
+Sylhet,464,None,None,350,None,None,414,None,None,0,None,None,375,None,None,0,None,None,521,None,None,400,None,None
+Maulavi Bazar,483,None,None,413,None,None,400,None,None,350,None,None,0,None,None,0,None,None,527,None,None,443,None,None
+Sunamganj,494,None,None,352,None,None,0,None,None,0,None,None,0,None,None,0,None,None,535,None,None,395,None,None
+Habiganj,575,None,None,400,None,None,0,None,None,0,None,None,0,None,None,0,None,None,583,None,None,421,None,None
+Sylhet Division,504,None,None,379,None,None,407,None,None,350,None,None,375,None,None,-,None,None,542,None,None,415,None,None
+Dhaka,625,None,None,470,None,None,610,None,None,420,None,None,610,None,None,370,None,None,710,None,None,570,None,None
+Gazipur,600,None,None,0,None,None,575,None,None,475,None,None,513,None,None,400,None,None,640,None,None,590,None,None
+Manikganj,600,None,None,0,None,None,572,None,None,470,None,None,500,None,None,400,None,None,640,None,None,583,None,None
+Munshiganj,0,None,None,0,None,None,0,None,None,0,None,None,568,None,None,0,None,None,613,None,None,450,None,None
+Narayanganj,655,None,None,550,None,None,593,None,None,513,None,None,540,None,None,495,None,None,656,None,None,562,None,None
+Narsingdi,0,None,None,0,None,None,550,None,None,350,None,None,529,None,None,300,None,None,600,None,None,450,None,None
+Faridpur,605,None,None,480,None,None,0,None,None,0,None,None,0,None,None,0,None,None,644,None,None,497,None,None
+Rajbari,563,None,None,0,None,None,575,None,None,0,None,None,0,None,None,0,None,None,613,None,None,0,None,None
+Madaripur,504,None,None,463,None,None,0,None,None,0,None,None,625,None,None,0,None,None,557,None,None,469,None,None
+Gopalganj,600,None,None,0,None,None,0,None,None,0,None,None,500,None,None,400,None,None,625,None,None,450,None,None
+Shariatpur,630,None,None,400,None,None,0,None,None,0,None,None,600,None,None,0,None,None,683,None,None,450,None,None
+Tangail,610,None,None,440,None,None,541,None,None,390,None,None,532,None,None,340,None,None,636,None,None,495,None,None
+Kishoreganj,624,None,None,0,None,None,596,None,None,0,None,None,558,None,None,0,None,None,662,None,None,0,None,None
+Dhaka Division,601,None,None,467,None,None,576,None,None,436,None,None,552,None,None,386,None,None,637,None,None,506,None,None
+Mymensingh,579,None,None,474,None,None,554,None,None,442,None,None,528,None,None,435,None,None,620,None,None,515,None,None
+Jamalpur,555,None,None,-,None,None,520,None,None,-,None,None,500,None,None,-,None,None,615,None,None,-,None,None
+Sherpur,,582,,,350,,,538,,,300,,,520,,,-,,,630,,,400,
+Netrokona,,612,,,495,,,583,,,467,,,517,,,400,,,650,,,557,
+Mymensingh Division,582,None,None,440,None,None,549,None,None,403,None,None,516,None,None,418,None,None,629,None,None,491,None,None

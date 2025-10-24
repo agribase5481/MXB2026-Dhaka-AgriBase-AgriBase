@@ -1,0 +1,11 @@
+Industrial Trawler,None,None_1,Artisanal Boat,None_2,None_3
+Type of Trawler,"No. of
+Trawler","No. of
+Gear",Type of Boat (by gear type),No. of Boat,"No. of
+Gear"
+Shrimp Trawler,33,99,Gill Net/ Trammel Net upto 1000(m),11909,16522
+Fish Trawler,199,597,Gill Net/ Trammel Net > 1000(m),14083,15759
+,,,Set Bag Net Fishing,2932,23728
+,,,Long Line Fishing,93,554
+,,,Other Gears/ Traps Fishing,341,2003
+Total,232,696,,29358,58566
