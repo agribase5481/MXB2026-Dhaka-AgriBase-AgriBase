@@ -350,6 +350,35 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
     last_table = None  # {"start_page", "header", "last_page", "csv_path"}
     saved_files = set()
 
+    # In the main extract() function:
+
+for tidx, table in enumerate(tables, start=1):
+    # Get table title from above
+    title = title_from_words_above(table.bbox, words)
+    
+    if not title:
+        print(f"Warning: No title found for table {tidx} on page {pnum}")
+        continue
+        
+    # Generate filename based on title
+    filename = make_table_filename(title, pnum)
+    out_path = Path(out_dir) / filename
+    
+    # Only append if explicit continuation
+    if last_table and should_append_table(title, last_table["title"]):
+        # Append logic
+        pass
+    else:
+        # Extract and save as new table
+        rows = safe_table_extract(table)
+        df = pd.DataFrame(rows)
+        df.to_csv(out_path, index=False)
+        
+        last_table = {
+            "title": title,
+            "path": out_path
+        }
+
     with pdfplumber.open(pdf_path) as pdf:
         total = len(pdf.pages)
         s = start_page if start_page and start_page > 0 else 1
