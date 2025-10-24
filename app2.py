@@ -183,7 +183,7 @@ def index():
 @app.route('/area_summary')
 def area_summary():
     try:
-        summary_data = query_db("SELECT * FROM crops_summary")
+        summary_data = query_db("SELECT * FROM crops_summary;")
     except sqlite3.OperationalError:
         flash("Could not find 'area_summary' table. Please check your database.", 'danger')
         summary_data = []
