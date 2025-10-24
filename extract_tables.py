@@ -1,16 +1,18 @@
 # ...existing code...
-# PDF table extractor tuned to produce shortened, page-prefixed CSV filenames.
-# - Uses pdfplumber
-# - Will append only when a table truly continues across contiguous pages (strict checks)
-# - Produces filenames like "8_Potato_Productivity_Div.csv" (prefix = starting page)
-# - Ensures crop name is prioritized in the filename (e.g., "Aus_rice_Productivity.csv")
+"""
+PDF table extractor (pdfplumber) that:
+- Prioritizes crop name first in CSV filename
+- Adds a starting page number prefix (e.g. "8_aman_area.csv")
+- Differentiates multiple tables for same crop via descriptor (area, district, hybrid, yield_rate, etc.)
+- Attempts to avoid merging/splitting errors by strict continuation detection (only append when contiguous pages and strong header overlap)
+- Saves cleaned CSVs into the specified output directory
+"""
 import argparse
 import csv
 import gc
-import os
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import pdfplumber
 import pandas as pd
@@ -19,35 +21,46 @@ import pandas as pd
 def sanitize_filename(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r'\s+', '_', name)
-    # allow underscores and alphanumeric and hyphen and dot
     name = re.sub(r'[^0-9A-Za-z_\-\.]', '', name)
     name = re.sub(r'_+', '_', name).strip('_')
+    name = name.lower()
     if not name:
         name = "table"
-    return name[:120] if len(name) > 120 else name
+    return name[:140]
 
 
-# common crop tokens prioritized for detection
+# common crop tokens prioritized for detection (lowercase)
 CROP_TOKENS = [
     'rice', 'paddy', 'aus', 'aman', 'boro', 'potato', 'maize', 'corn', 'wheat', 'barley',
     'millet', 'sorghum', 'cassava', 'yam', 'groundnut', 'peanut', 'soy', 'soybean', 'tea',
     'coffee', 'sugarcane', 'banana', 'coconut', 'cotton', 'tobacco', 'onion', 'garlic',
     'tomato', 'chili', 'chilli', 'okra', 'bean', 'lentil', 'pulse', 'mustard', 'rapeseed',
-    'sesame', 'chickpea', 'peas', 'vegetable', 'fruit'
+    'sesame', 'chickpea', 'peas', 'vegetable', 'fruit', 'jute', 'rubber'
 ]
 
 
+# descriptor patterns in priority order -> normalized descriptor name (lowercase)
+DESCRIPTOR_PATTERNS = [
+    (r'\b(hybrid|variety|varieties)\b', 'hybrid'),
+    (r'\b(district|zila|thana|upazila)\b', 'district'),
+    (r'\b(area|area harvested|cultivated area)\b', 'area'),
+    (r'\b(yield rate|yield_per|yield|yield_rate|yield/ha)\b', 'yield_rate'),
+    (r'\b(productiv|productivity)\b', 'productivity'),
+    (r'\b(estimat|estimate|estimates)\b', 'estimates'),
+    (r'\b(production|prod)\b', 'production'),
+    (r'\b(expend|expenditure|expenditures)\b', 'expenditure'),
+    (r'\b(price|prices|market)\b', 'price'),
+    (r'\b(estimate|forecast)\b', 'estimate'),
+    (r'\b(grade|class|category)\b', 'category'),
+]
+
+DIVISION_PATTERNS = [r'\b(division|div)\b', r'\b(by division)\b']
+
+
 def extract_crop_from_text(text: Optional[str], header: Optional[List[str]] = None) -> Optional[str]:
-    """
-    Attempt to extract a crop token from title/header text.
-    Priority: explicit tokens in text (preserve original token casing/underscores when possible),
-    then header tokens.
-    """
     if text:
-        orig = str(text)
-        # break into candidate tokens preserving underscores and original substrings
-        candidates = re.split(r'[^\w_]+', orig)
-        for cand in candidates:
+        cand_tokens = re.split(r'[^\w_]+', text)
+        for cand in cand_tokens:
             if not cand:
                 continue
             low = cand.lower()
@@ -58,7 +71,6 @@ def extract_crop_from_text(text: Optional[str], header: Optional[List[str]] = No
         for h in header:
             if not h:
                 continue
-            # split header cell into tokens
             parts = re.split(r'[^\w_]+', str(h))
             for part in parts:
                 if not part:
@@ -71,14 +83,11 @@ def extract_crop_from_text(text: Optional[str], header: Optional[List[str]] = No
 
 
 def sanitize_crop_token(token: str) -> str:
-    token = token.strip()
+    token = (token or "").strip()
     token = re.sub(r'\s+', '_', token)
     token = re.sub(r'[^A-Za-z0-9_]', '', token)
-    # preserve common patterns like "Aus_rice" or "AusRice"
-    if '_' in token:
-        # normalize underscores (single)
-        token = re.sub(r'_+', '_', token).strip('_')
-    return token
+    token = re.sub(r'_+', '_', token).strip('_')
+    return token.lower()
 
 
 def is_mostly_text(row: List[str]) -> bool:
@@ -122,7 +131,6 @@ def title_from_words_above(table_bbox, words, max_above_px=200) -> Optional[str]
         return None
     best_key = sorted(lines.keys(), reverse=True)[0]
     raw = " ".join(lines[best_key]).strip()
-    # keep raw for detection of "Contd" but strip it for title
     m = re.search(r'(?:Table\s*\d+\s*[:\-\–]?\s*)?(.*?)(?:\bContd\.?|\bContinued\.?)?$', raw, flags=re.I)
     title = m.group(1).strip() if m else raw
     if len(title) < 1 or re.fullmatch(r'[-\s\.\d]+', title):
@@ -191,20 +199,6 @@ def load_existing_csv_index(out_dir: Path):
     return index
 
 
-def find_best_existing_csv(header: List[str], index, min_overlap=0.9) -> Optional[Path]:
-    # Provided for compatibility, but script will avoid appending to arbitrary old CSVs by default.
-    best = None
-    best_score = 0.0
-    for item in index:
-        score = overlap_ratio([c.lower() for c in header], [c.lower() for c in item["header"]])
-        if score >= min_overlap and score > best_score:
-            best_score = score
-            best = item
-        elif score == best_score and item["mtime"] > (best["mtime"] if best else 0):
-            best = item
-    return best["path"] if best else None
-
-
 def safe_to_csv_append(df: pd.DataFrame, path: Path, target_header: List[str]):
     mapped = []
     for c in df.columns:
@@ -215,74 +209,40 @@ def safe_to_csv_append(df: pd.DataFrame, path: Path, target_header: List[str]):
     df.to_csv(path, mode='a', header=False, index=False)
 
 
+def detect_descriptor(text: Optional[str], header: Optional[List[str]] = None) -> Optional[str]:
+    hay = (" ".join(header) + " " + (text or "")) if header else (text or "")
+    hay = (hay or "").lower()
+    for pattern, desc in DESCRIPTOR_PATTERNS:
+        if re.search(pattern, hay):
+            return desc
+    # if none matched, try some heuristics for "district/area/productivity"
+    if re.search(r'\b(division|div)\b', hay):
+        return 'division'
+    return None
+
+
 def shorten_name_from_text(text: str, header: Optional[List[str]] = None) -> str:
-    """
-    Generate a compact name prioritizing the crop token.
-    If crop found -> Crop_Descriptor[_Div]
-    Else fallback to header/title heuristics.
-    """
     text = (text or "").strip()
-    # primary: find crop in title or header
     crop = extract_crop_from_text(text, header)
-    descriptor = None
-    suffix = ''
-
+    descriptor = detect_descriptor(text, header) or 'table'
+    # check division presence
+    is_div = bool(re.search("|".join(DIVISION_PATTERNS), (" ".join(header or []) + " " + (text or "")).lower()))
+    parts = []
     if crop:
-        # determine descriptor from title if possible
-        if re.search(r'productiv', text, flags=re.I):
-            descriptor = 'Productivity'
-        elif re.search(r'expend', text, flags=re.I):
-            descriptor = 'Expenditure'
-        elif re.search(r'area', text, flags=re.I):
-            descriptor = 'Area'
-        else:
-            # try to infer descriptor from header as fallback
-            joined_hdr = " ".join(header or [])
-            if re.search(r'productiv', joined_hdr, flags=re.I):
-                descriptor = 'Productivity'
-            elif re.search(r'expend', joined_hdr, flags=re.I):
-                descriptor = 'Expenditure'
-            elif re.search(r'area', joined_hdr, flags=re.I):
-                descriptor = 'Area'
-            else:
-                descriptor = 'Table'
-        if re.search(r'division|div', text or "" , flags=re.I) or any(re.search(r'division|div', h or "", flags=re.I) for h in (header or [])):
-            suffix = 'Div'
-        parts = [sanitize_filename(crop), descriptor]
-        if suffix:
-            parts.append(suffix)
-        return "_".join([p for p in parts if p])
-
-    # fallback: previous heuristic when no crop is found
-    t = re.sub(r'\s+', '_', text)
-    t = re.sub(r'[^0-9A-Za-z_\-]', '', t)
-    t = re.sub(r'_+', '_', t).strip('_')
-    if not t and header:
-        tokens = [re.sub(r'[^A-Za-z0-9]', '', h).title() for h in header if h and re.sub(r'[^A-Za-z0-9]', '', h)]
+        parts.append(sanitize_filename(crop))
     else:
-        tokens = [t] if t else []
-    if not tokens:
-        tokens = ['Table']
-    # try to pick crop from tokens anyway
-    for tok in tokens:
-        for ct in CROP_TOKENS:
-            if ct in tok.lower():
-                crop = sanitize_crop_token(tok)
-                break
-        if crop:
-            break
-    if crop:
-        descriptor = 'Productivity' if re.search(r'productiv', text, flags=re.I) else ('Expenditure' if re.search(r'expend', text, flags=re.I) else 'Table')
-        parts = [sanitize_filename(crop), descriptor]
-        return "_".join([p for p in parts if p])
-    # last resort: use first two tokens as name
-    tokens = tokens[:2]
-    base = sanitize_filename("_".join(tokens))
-    if re.search(r'productiv', text, flags=re.I):
-        base = f"{base}_Productivity"
-    elif re.search(r'expend', text, flags=re.I):
-        base = f"{base}_Expenditure"
-    return base or "Table"
+        # if no crop, attempt to use first header token
+        if header and header[0]:
+            htok = re.sub(r'[^A-Za-z0-9]', '_', header[0]).strip('_').lower()
+            parts.append(htok or 'table')
+        else:
+            parts.append('table')
+    parts.append(descriptor)
+    if is_div:
+        parts.append('div')
+    name = "_".join([p for p in parts if p])
+    name = re.sub(r'_+', '_', name)
+    return sanitize_filename(name)
 
 
 def build_short_filename(title: Optional[str], header: List[str], starting_page: int) -> Path:
@@ -318,7 +278,6 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                 print(f"[page {pnum}] find_tables error: {exc}", flush=True)
                 tables = []
             if not tables:
-                # keep last_table to allow contiguous continuation detection on next page
                 continue
 
             try:
@@ -350,46 +309,42 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                     title = None
 
                 appended = False
-                # strict continuation detection:
+                # strict continuation detection for multi-page tables
                 if last_table:
-                    # contiguous pages only
                     if pnum == last_table["last_page"] + 1:
                         header_overlap = overlap_ratio(header, last_table["header"])
-                        # require strong overlap and similar column count to consider continuation
                         cols_close = abs(len(header) - len(last_table["header"])) <= 2
-                        if header_overlap >= 0.8 and cols_close:
+                        if header_overlap >= 0.85 and cols_close:
                             try:
                                 safe_to_csv_append(df, last_table["csv_path"], last_table["header"])
                                 last_table["last_page"] = pnum
                                 appended = True
                                 print(f"[page {pnum}] appended (continued) to {last_table['csv_path'].name}", flush=True)
                             except Exception as exc:
-                                print(f"[page {pnum}] append to last_table failed: {exc}", flush=True)
+                                print(f"[page {pnum}] append failed: {exc}", flush=True)
 
                 if appended:
                     del df
                     gc.collect()
                     continue
 
-                # New table: create file using short name and starting page prefix.
-                # Ensure crop name is prioritized by passing header into name generator.
+                # New table - build crop-first short filename with descriptor
                 short_path = build_short_filename(title, header, pnum)
                 csv_path = out_dir / short_path.name
                 base_stem = csv_path.stem
                 k = 1
-                # If multiple different tables on same starting page produce same short name, disambiguate
+                # disambiguate if same name appears multiple times on same page or later
                 while csv_path.exists():
                     csv_path = out_dir / f"{base_stem}_{k}.csv"
                     k += 1
                 try:
                     df.to_csv(csv_path, index=False)
-                    print(f"[page {pnum}] saved new table {csv_path.name}", flush=True)
+                    print(f"[page {pnum}] saved {csv_path.name}", flush=True)
                 except Exception as exc:
                     print(f"[page {pnum}] write failed ({exc}), retrying with utf-8-sig", flush=True)
                     df.to_csv(csv_path, index=False, encoding="utf-8-sig")
 
                 saved_files.add(str(csv_path))
-                # update last_table to allow proper continuation detection
                 last_table = {
                     "start_page": pnum,
                     "header": list(df.columns),
@@ -404,7 +359,7 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with strict continuation rules and shortened names (crop-first)")
+    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with crop-first short names and page prefixes")
     parser.add_argument("pdf", help="PDF file path")
     parser.add_argument("out", help="Output directory for CSVs")
     parser.add_argument("--start", type=int, default=None, help="Start page (1-based)")
