@@ -145,7 +145,7 @@ CROP_TO_TABLE_MAP = {
 # Maps crops to their *specific* variety tables for the "Top Producers" page.
 CROP_VARIETY_TABLE_MAP = {
     "Aus Rice": {
-        "Total": "aus_total",
+        "Total": "aus_total_dist",
         "Hybrid": "aus_hybrid",
         "HYV": "aus_hyv_dist",
         "Local": "aus_local"
