@@ -270,7 +270,101 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                 del df
                 gc.collect()
 
+
+
     print(f"Done. {len(saved_files)} new tables saved/updated in {out_dir}", flush=True)
+
+# ...existing code...
+
+
+def get_starting_page_from_fname(fname):
+    """
+    Try to parse the starting page number from a filename like:
+      "8.6_Productivity_and_expenditure_of_Potato_by_Division.csv"
+      "8-9_Some_table.csv" or "12_Something.csv"
+    Returns int or None.
+    """
+    base = os.path.basename(fname)
+    # try leading number before dot/hyphen/underscore/space
+    m = re.match(r'^\s*(\d+)(?:[.\-_\s]|$)', base)
+    if m:
+        return int(m.group(1))
+    # try any pattern like "..._8_..." or "...-8_..."
+    m = re.search(r'[_\-\s](\d+)(?:[_\-\s]|$)', base)
+    if m:
+        return int(m.group(1))
+    return None
+
+def shorten_name(original_filename):
+    """
+    Create a short, human-readable filename from a verbose original filename.
+    Examples:
+      "8.6_Productivity_and_expenditure_of_Potato_by_Division.csv" -> "Potato_Productivity_Div.csv"
+      fallback -> "<Token>_Table.csv"
+    """
+    base = os.path.splitext(os.path.basename(original_filename))[0]
+    # remove leading numbers and separators
+    base = re.sub(r'^[\d\.\-_\s]+', '', base)
+
+    # try pattern: _of_<crop>_by_
+    m = re.search(r'_of_([^_]+?)_by_', base, flags=re.IGNORECASE)
+    if m:
+        crop = m.group(1)
+    else:
+        # fallback: split on separators and remove common stop words
+        tokens = [t for t in re.split(r'[_\s]+', base) if t]
+        stop = {'and','of','by','per','in','the','table','division','div'}
+        tokens = [t for t in tokens if t.lower() not in stop]
+        # prefer a token that looks like a crop (capitalized) otherwise last token
+        crop = None
+        for t in tokens:
+            if t and t[0].isalpha() and t[0].isupper():
+                crop = t
+                break
+        if not crop and tokens:
+            crop = tokens[-1]
+        if not crop:
+            crop = 'Data'
+
+    # sanitize crop token
+    crop_clean = re.sub(r'[^A-Za-z0-9]', '', crop).title()
+
+    # decide descriptor
+    if re.search(r'productiv', base, flags=re.IGNORECASE):
+        descriptor = 'Productivity'
+    elif re.search(r'expend|expendit', base, flags=re.IGNORECASE):
+        descriptor = 'Expenditure'
+    elif re.search(r'area', base, flags=re.IGNORECASE):
+        descriptor = 'Area'
+    else:
+        descriptor = 'Table'
+
+    # prefer "Div" when division appears in original name
+    suffix = 'Div' if re.search(r'division|div', base, flags=re.IGNORECASE) else ''
+
+    parts = [crop_clean, descriptor]
+    if suffix:
+        parts.append(suffix)
+    short = '_'.join([p for p in parts if p]) + '.csv'
+    return short
+
+# ...existing code...
+# assume your extraction loop yields a list of created csv file paths -> generated_csvs
+# and you have an output_dir variable where files should live.
+# Replace or integrate the following saving/renaming logic into your file-export section.
+
+# Example integration:
+# for src_path in generated_csvs:
+#     start_page = get_starting_page_from_fname(src_path)
+#     shortname = shorten_name(src_path)
+#     prefix = f"{start_page}_" if start_page is not None else ""
+#     dst_name = prefix + shortname
+#     dst_path = os.path.join(output_dir, dst_name)
+#     # move/rename the file into final destination
+#     os.makedirs(output_dir, exist_ok=True)
+#     os.replace(src_path, dst_path)
+
+# ...existing code...
 
 
 if __name__ == "__main__":
