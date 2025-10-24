@@ -1,182 +1,150 @@
-"""
-Create/Populate trial.db from CSVs in extracted_tables_2024.
-- Preserves exact CSV rows as JSON (header->value) to keep original cell layout.
-- Detects variety presence per table and records tables_meta (filename, page, crop, descriptor, scope, has_variety).
-- Does NOT touch agri-base.db (creates/uses trial.db).
-Run:
-    python3 update_trial_db.py --csvdir extracted_tables_2024 --db trial.db
-"""
-import argparse
+# create_db.py
+import os
 import sqlite3
-import json
-import re
-from pathlib import Path
-from datetime import datetime
-
 import pandas as pd
+import re
 
-DESCRIPTOR_TOKENS = {
-    "area", "production", "prod", "area_prod", "yield", "yield_rate", "price",
-    "expenditure", "estimate", "productivity", "cost"
+# --- CONFIGURATION ---
+CSV_DIR = 'selected few'
+DATABASE_NAME = 'agri_complete.db'
+
+# This map is CRITICAL. It finds messy column names in your CSVs
+# and renames them to the clean, standard name our app will use.
+COLUMN_NAME_MAP = {
+    # District columns
+    'District/Division': 'District_Division',
+    'District': 'District_Division',
+    'Div/Dist': 'District_Division',
+    'District_Division': 'District_Division',
+
+    # Variety/Crop columns
+    'Variety': 'Variety',
+    'Crop': 'Crop',
+
+    # Generic Area columns
+    'Area_Acres': 'Area_Acres',
+    'Area_Hectors': 'Area_Hectors',
+
+    # Generic Yield columns
+    'Yield_Acre_Maund': 'Yield_Acre_Maund',
+    'Yield_Hector_MT': 'Yield_Hector_MT',
+    'Per_Acre_Yield_Kg': 'Per_Acre_Yield_Kg',
+
+    # Generic Production columns
+    'Production_MT': 'Production_MT',
+    'Production_000_MT': 'Production_000_MT',
+
+    # Specific 2022-23 columns
+    '2022-23_Area_Acres': '2022-23_Area_Acres',
+    '2022-23_Area_in_acre': '2022-23_Area_Acres',
+    '2022-23_Area_Hectors': '2022-23_Area_Hectors',
+    '2022-23_Area_in_hector': '2022-23_Area_Hectors',
+    '2022-23_Yield_Acre_Maund': '2022-23_Yield_Acre_Maund',
+    '2022-23_Yield_per_acre_Maunds': '2022-23_Yield_Acre_Maund',
+    '2022-23_Yield_Hector_MT': '2022-23_Yield_Hector_MT',
+    '2022-23_Yield_per_hector_M_Ton': '2022-23_Yield_Hector_MT',
+    '2022-23_Production_MT': '2022-23_Production_MT',
+    '2022-23_Production_mton': '2022-23_Production_MT',
+    '2022-23_Production_M_tons': '2022-23_Production_MT',
+
+    # Specific 2023-24 columns
+    '2023-24_Area_Acres': '2023-24_Area_Acres',
+    '2023-24_Area_in_acre': '2023-24_Area_Acres',
+    '2023-24_Area_Hectors': '2023-24_Area_Hectors',
+    '2023-24_Area_in_hector': '2023-24_Area_Hectors',
+    '2023-24_Yield_Acre_Maund': '2023-24_Yield_Acre_Maund',
+    '2023-24_Yield_per_acre_Maunds': '2023-24_Yield_Acre_Maund',
+    '2023-24_Yield_Hector_MT': '2023-24_Yield_Hector_MT',
+    '2023-24_Yield_per_hector_M_Ton': '2023-24_Yield_Hector_MT',
+    '2023-24_Production_MT': '2023-24_Production_MT',
+    '2023-24_Production_mton': '2023-24_Production_MT',
+    '2023-24_Production_M_tons': '2023-24_Production_MT',
 }
-SCOPE_TOKENS = {"dist", "div", "upz", "thana", "district", "division", "upazila"}
+# --- END CONFIGURATION ---
 
+def clean_column_name(col):
+    """Cleans a single column name using the map or generic rules."""
+    col_stripped = str(col).strip()
 
-def parse_filename(fname: str):
-    stem = Path(fname).stem
-    parts = stem.split('_')
-    page = None
-    crop = None
-    descriptor = None
-    scope = None
+    # 1. Check for a perfect match in our map
+    if col_stripped in COLUMN_NAME_MAP:
+        return COLUMN_NAME_MAP[col_stripped]
 
-    # page prefix
-    if parts and re.fullmatch(r'\d+', parts[0]):
-        page = int(parts[0])
-        parts = parts[1:]
+    # 2. If no match, apply generic cleaning
+    col_cleaned = col_stripped.lower()
+    col_cleaned = col_cleaned.replace(' ', '_').replace('-', '_').replace('/', '_')
+    col_cleaned = re.sub(r'\(.*\)', '', col_cleaned) # Remove (text)
+    col_cleaned = re.sub(r'[^a-z0-9_]+', '', col_cleaned) # Remove special chars
+    col_cleaned = col_cleaned.strip('_')
 
-    # last tokens may be scope/descriptor
-    if parts:
-        if parts[-1].lower() in SCOPE_TOKENS:
-            scope = parts.pop(-1).lower()
-    if parts:
-        if parts[-1].lower() in DESCRIPTOR_TOKENS:
-            descriptor = parts.pop(-1).lower()
-    # handle compound 'area_prod'
-    if parts and re.search(r'area[_\-]?prod', parts[-1].lower()):
-        descriptor = 'area_prod'
-        parts.pop(-1)
+    # 3. Check again if this generic version is in the map
+    if col_cleaned in COLUMN_NAME_MAP:
+        return COLUMN_NAME_MAP[col_cleaned]
 
-    if parts:
-        crop = "_".join(parts)
-        crop = re.sub(r'[^A-Za-z0-9_]', '', crop).strip('_')
-        if crop == '':
-            crop = None
-    return page, crop, descriptor, scope
+    # 4. Fallback: return the generically cleaned name
+    return col_cleaned
 
+def generate_table_name(csv_filename):
+    """Generates a clean DB table name from a CSV filename."""
+    # Remove .csv extension
+    table_name = os.path.splitext(csv_filename)[0]
+    # Remove numeric prefix like "85_"
+    table_name = re.sub(r'^\d+_', '', table_name)
+    # Clean and lowercase
+    table_name = table_name.lower().strip()
+    table_name = table_name.replace(' ', '_').replace('-', '_')
+    table_name = re.sub(r'\(.*\)', '', table_name)
+    table_name = re.sub(r'[^a-z0-9_]+', '', table_name)
+    return table_name.strip('_')
 
-def detect_variety(df: pd.DataFrame) -> bool:
-    cols = [str(c).lower() for c in df.columns]
-    if any('variet' in c or 'variety' in c for c in cols):
-        return True
-    # sample values
-    sample = df.head(80).astype(str).applymap(lambda x: x.lower() if pd.notnull(x) else '')
-    if sample.apply(lambda col: col.str.contains(r'variet|variety|hybrid|local', na=False)).any().any():
-        return True
-    return False
-
-
-def row_to_dict(header, row):
-    out = {}
-    # ensure header list is aligned
-    for i, val in enumerate(row):
-        key = header[i] if i < len(header) else f"col_{i}"
-        if pd.isna(key) or str(key).strip() == "":
-            key = f"col_{i}"
-        out[str(key).strip()] = "" if pd.isna(val) else str(val)
-    return out
-
-
-def ensure_schema(conn: sqlite3.Connection):
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS crops (
-        id INTEGER PRIMARY KEY,
-        name TEXT UNIQUE
-    )""")
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS tables_meta (
-        id INTEGER PRIMARY KEY,
-        filename TEXT UNIQUE,
-        page INTEGER,
-        crop TEXT,
-        descriptor TEXT,
-        scope TEXT,
-        has_variety INTEGER,
-        created_at TEXT
-    )""")
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS crop_data (
-        id INTEGER PRIMARY KEY,
-        table_id INTEGER,
-        row_index INTEGER,
-        row_json TEXT,
-        FOREIGN KEY(table_id) REFERENCES tables_meta(id)
-    )""")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_tables_crop ON tables_meta(crop)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_data_table ON crop_data(table_id)")
-    conn.commit()
-
-
-def ingest_csv(conn: sqlite3.Connection, csv_path: Path, overwrite=False):
-    fname = csv_path.name
-    page, crop, descriptor, scope = parse_filename(fname)
-    # read CSV robustly
+def import_csv_to_db(csv_file_path, table_name, conn):
+    """Imports a single CSV file, cleaning column names."""
     try:
-        df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
-    except Exception:
-        df = pd.read_csv(csv_path, dtype=str, encoding='utf-8', engine='python', keep_default_na=False, on_bad_lines='skip')
+        # Read CSV as all strings, using latin-1 encoding
+        df = pd.read_csv(csv_file_path, dtype=str, encoding='latin-1')
 
-    header = list(df.columns)
-    has_var = 1 if detect_variety(df) else 0
+        # Clean all column names
+        df.columns = [clean_column_name(col) for col in df.columns]
 
-    cur = conn.cursor()
-    if crop:
-        cur.execute("INSERT OR IGNORE INTO crops(name) VALUES(?)", (crop,))
-    now = datetime.utcnow().isoformat()
-    if overwrite:
-        cur.execute("SELECT id FROM tables_meta WHERE filename = ?", (fname,))
-        r = cur.fetchone()
-        if r:
-            tid = r[0]
-            cur.execute("DELETE FROM crop_data WHERE table_id = ?", (tid,))
-            cur.execute("DELETE FROM tables_meta WHERE id = ?", (tid,))
-            conn.commit()
+        # Remove duplicate columns if any
+        df = df.loc[:,~df.columns.duplicated()]
 
-    cur.execute("""
-        INSERT OR IGNORE INTO tables_meta(filename, page, crop, descriptor, scope, has_variety, created_at)
-        VALUES(?,?,?,?,?,?,?)""",
-        (fname, page, crop, descriptor, scope, has_var, now))
-    conn.commit()
-    cur.execute("SELECT id FROM tables_meta WHERE filename = ?", (fname,))
-    table_id = cur.fetchone()[0]
-
-    # store rows
-    for idx, row in enumerate(df.values.tolist()):
-        row_obj = row_to_dict(header, row)
-        cur.execute("INSERT INTO crop_data(table_id, row_index, row_json) VALUES(?,?,?)",
-                    (table_id, idx, json.dumps(row_obj, ensure_ascii=False)))
-    conn.commit()
-    return table_id, has_var
-
+        df.to_sql(table_name, conn, if_exists='replace', index=False)
+        print(f"✅ Successfully imported '{csv_file_path}' into table '{table_name}'.")
+    except pd.errors.EmptyDataError:
+        print(f"⚠️ WARNING: '{csv_file_path}' is empty. Skipping.")
+    except Exception as e:
+        print(f"❌ ERROR importing '{csv_file_path}': {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Import CSVs into trial.db (safe, non-destructive)")
-    parser.add_argument("--db", default="trial.db", help="SQLite DB path (will be created if missing)")
-    parser.add_argument("--csvdir", default="extracted_tables_2024", help="Directory with CSV files")
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing entries for same filename")
-    args = parser.parse_args()
+    if not os.path.exists(CSV_DIR):
+        print(f"❌ ERROR: Directory not found: '{CSV_DIR}'")
+        print("Please create it and put your 215 CSV files inside.")
+        return
 
-    dbp = Path(args.db)
-    csvdir = Path(args.csvdir)
-    if not csvdir.exists():
-        raise SystemExit(f"CSV directory not found: {csvdir}")
+    # Remove old database if it exists
+    if os.path.exists(DATABASE_NAME):
+        os.remove(DATABASE_NAME)
+        print(f"🗑️ Removed old database '{DATABASE_NAME}'.")
 
-    conn = sqlite3.connect(str(dbp))
-    ensure_schema(conn)
+    conn = sqlite3.connect(DATABASE_NAME)
+    print(f"✨ Created new database '{DATABASE_NAME}'.")
+    print("\n--- Starting CSV Import ---")
 
-    files = sorted(csvdir.glob("*.csv"))
-    n = 0
-    for f in files:
-        try:
-            tid, hv = ingest_csv(conn, f, overwrite=args.overwrite)
-            n += 1
-            print(f"Imported: {f.name} -> table_id={tid} has_variety={hv}")
-        except Exception as e:
-            print(f"Failed to import {f.name}: {e}")
+    csv_files = [f for f in os.listdir(CSV_DIR) if f.endswith('.csv')]
+    if not csv_files:
+        print(f"❌ ERROR: No CSV files found in '{CSV_DIR}'.")
+        conn.close()
+        return
+
+    for csv_filename in csv_files:
+        csv_file_path = os.path.join(CSV_DIR, csv_filename)
+        table_name = generate_table_name(csv_filename)
+        import_csv_to_db(csv_file_path, table_name, conn)
+
     conn.close()
-    print(f"Done. {n} files processed into {dbp.resolve()}")
+    print("\n--- Database creation complete! ---")
+    print(f"Total tables created: {len(csv_files)}")
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
