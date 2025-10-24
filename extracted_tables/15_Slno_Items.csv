@@ -1,0 +1,15 @@
+SL.No,Items,Year,None,None_1,None_2,None_3,None_4
+None,None,2020-21,None,2021-22,None,2022-23,None
+None,None,Area,None,Area,None,Area,None
+None,None,Acre(‘000),Hectare,Acre (‘000),Hectare,Acre(‘000),Hectare
+1.,Net cropped Area,19972,8082,19875,8043,19829,8028
+2.,Gross Cropped Area,39493,15982,39358,15928,39296,1591
+3.,Single Cropped Area,5160,2088,5084,2057,5049,2044
+4.,Double Cropped Area,10166,4114,10149,4107,10140,4105
+5.,Triple Cropped Area,4594,1859,4592,1858,4593,1859
+6.,Quadruple Cropped Area,53,21,50,20,47,19
+7.,Current Fallow Area,1118,452,1206,488,1188,481
+8.,Intensity of Cropping (%),198,80,198,80,198,80
+9.,Total Irrigated area,19629,7944,20681,8373,21530,8717
+10.,Total Cereals (`000’ M.ton),43493,None,43493,None,44829,None
+11.,Agriculture holding,"Number of holding (Farm) 168,81,757 National report volume-1",None,None,None,None,None

@@ -1,8 +1,9 @@
+# ...existing code...
 # PDF table extractor tuned to produce shortened, page-prefixed CSV filenames.
 # - Uses pdfplumber
 # - Will append only when a table truly continues across contiguous pages (strict checks)
 # - Produces filenames like "8_Potato_Productivity_Div.csv" (prefix = starting page)
-# - Attempts to avoid merging/splitting errors by using stricter continuation heuristics
+# - Ensures crop name is prioritized in the filename (e.g., "Aus_rice_Productivity.csv")
 import argparse
 import csv
 import gc
@@ -18,11 +19,66 @@ import pandas as pd
 def sanitize_filename(name: str) -> str:
     name = (name or "").strip()
     name = re.sub(r'\s+', '_', name)
+    # allow underscores and alphanumeric and hyphen and dot
     name = re.sub(r'[^0-9A-Za-z_\-\.]', '', name)
     name = re.sub(r'_+', '_', name).strip('_')
     if not name:
         name = "table"
     return name[:120] if len(name) > 120 else name
+
+
+# common crop tokens prioritized for detection
+CROP_TOKENS = [
+    'rice', 'paddy', 'aus', 'aman', 'boro', 'potato', 'maize', 'corn', 'wheat', 'barley',
+    'millet', 'sorghum', 'cassava', 'yam', 'groundnut', 'peanut', 'soy', 'soybean', 'tea',
+    'coffee', 'sugarcane', 'banana', 'coconut', 'cotton', 'tobacco', 'onion', 'garlic',
+    'tomato', 'chili', 'chilli', 'okra', 'bean', 'lentil', 'pulse', 'mustard', 'rapeseed',
+    'sesame', 'chickpea', 'peas', 'vegetable', 'fruit'
+]
+
+
+def extract_crop_from_text(text: Optional[str], header: Optional[List[str]] = None) -> Optional[str]:
+    """
+    Attempt to extract a crop token from title/header text.
+    Priority: explicit tokens in text (preserve original token casing/underscores when possible),
+    then header tokens.
+    """
+    if text:
+        orig = str(text)
+        # break into candidate tokens preserving underscores and original substrings
+        candidates = re.split(r'[^\w_]+', orig)
+        for cand in candidates:
+            if not cand:
+                continue
+            low = cand.lower()
+            for ct in CROP_TOKENS:
+                if ct in low:
+                    return sanitize_crop_token(cand)
+    if header:
+        for h in header:
+            if not h:
+                continue
+            # split header cell into tokens
+            parts = re.split(r'[^\w_]+', str(h))
+            for part in parts:
+                if not part:
+                    continue
+                low = part.lower()
+                for ct in CROP_TOKENS:
+                    if ct in low:
+                        return sanitize_crop_token(part)
+    return None
+
+
+def sanitize_crop_token(token: str) -> str:
+    token = token.strip()
+    token = re.sub(r'\s+', '_', token)
+    token = re.sub(r'[^A-Za-z0-9_]', '', token)
+    # preserve common patterns like "Aus_rice" or "AusRice"
+    if '_' in token:
+        # normalize underscores (single)
+        token = re.sub(r'_+', '_', token).strip('_')
+    return token
 
 
 def is_mostly_text(row: List[str]) -> bool:
@@ -69,7 +125,7 @@ def title_from_words_above(table_bbox, words, max_above_px=200) -> Optional[str]
     # keep raw for detection of "Contd" but strip it for title
     m = re.search(r'(?:Table\s*\d+\s*[:\-\–]?\s*)?(.*?)(?:\bContd\.?|\bContinued\.?)?$', raw, flags=re.I)
     title = m.group(1).strip() if m else raw
-    if len(title) < 3 or re.fullmatch(r'[-\s\.\d]+', title):
+    if len(title) < 1 or re.fullmatch(r'[-\s\.\d]+', title):
         return None
     return title
 
@@ -159,70 +215,78 @@ def safe_to_csv_append(df: pd.DataFrame, path: Path, target_header: List[str]):
     df.to_csv(path, mode='a', header=False, index=False)
 
 
-def shorten_name_from_text(text: str) -> str:
-    # try to generate a compact, descriptive name from arbitrary title/header text
+def shorten_name_from_text(text: str, header: Optional[List[str]] = None) -> str:
+    """
+    Generate a compact name prioritizing the crop token.
+    If crop found -> Crop_Descriptor[_Div]
+    Else fallback to header/title heuristics.
+    """
     text = (text or "").strip()
-    text = re.sub(r'\s+', '_', text)
-    text = re.sub(r'[^0-9A-Za-z_\-]', '', text)
-    text = re.sub(r'_+', '_', text).strip('_')
-    if not text:
-        return "Table"
-    # try to extract "of_<Crop>_by" pattern
-    m = re.search(r'of_([A-Za-z0-9]+?)_by', text, flags=re.I)
-    if m:
-        crop = m.group(1).title()
-        descriptor = 'Table'
+    # primary: find crop in title or header
+    crop = extract_crop_from_text(text, header)
+    descriptor = None
+    suffix = ''
+
+    if crop:
+        # determine descriptor from title if possible
         if re.search(r'productiv', text, flags=re.I):
             descriptor = 'Productivity'
         elif re.search(r'expend', text, flags=re.I):
             descriptor = 'Expenditure'
         elif re.search(r'area', text, flags=re.I):
             descriptor = 'Area'
-        suffix = 'Div' if re.search(r'division|div', text, flags=re.I) else ''
-        parts = [crop, descriptor]
+        else:
+            # try to infer descriptor from header as fallback
+            joined_hdr = " ".join(header or [])
+            if re.search(r'productiv', joined_hdr, flags=re.I):
+                descriptor = 'Productivity'
+            elif re.search(r'expend', joined_hdr, flags=re.I):
+                descriptor = 'Expenditure'
+            elif re.search(r'area', joined_hdr, flags=re.I):
+                descriptor = 'Area'
+            else:
+                descriptor = 'Table'
+        if re.search(r'division|div', text or "" , flags=re.I) or any(re.search(r'division|div', h or "", flags=re.I) for h in (header or [])):
+            suffix = 'Div'
+        parts = [sanitize_filename(crop), descriptor]
         if suffix:
             parts.append(suffix)
-        return sanitize_filename("_".join(parts))
-    # fallback: pick up first capitalized token or first token
-    tokens = [t for t in re.split(r'[_\s]+', text) if t]
-    stop = {'and', 'of', 'by', 'per', 'in', 'the', 'table', 'division', 'div'}
-    tokens = [t for t in tokens if t.lower() not in stop]
-    crop = None
-    for t in tokens:
-        if t and t[0].isalpha() and t[0].isupper():
-            crop = t
+        return "_".join([p for p in parts if p])
+
+    # fallback: previous heuristic when no crop is found
+    t = re.sub(r'\s+', '_', text)
+    t = re.sub(r'[^0-9A-Za-z_\-]', '', t)
+    t = re.sub(r'_+', '_', t).strip('_')
+    if not t and header:
+        tokens = [re.sub(r'[^A-Za-z0-9]', '', h).title() for h in header if h and re.sub(r'[^A-Za-z0-9]', '', h)]
+    else:
+        tokens = [t] if t else []
+    if not tokens:
+        tokens = ['Table']
+    # try to pick crop from tokens anyway
+    for tok in tokens:
+        for ct in CROP_TOKENS:
+            if ct in tok.lower():
+                crop = sanitize_crop_token(tok)
+                break
+        if crop:
             break
-    if not crop and tokens:
-        crop = tokens[0]
-    crop_clean = re.sub(r'[^A-Za-z0-9]', '', (crop or 'Data')).title()
-    descriptor = 'Table'
+    if crop:
+        descriptor = 'Productivity' if re.search(r'productiv', text, flags=re.I) else ('Expenditure' if re.search(r'expend', text, flags=re.I) else 'Table')
+        parts = [sanitize_filename(crop), descriptor]
+        return "_".join([p for p in parts if p])
+    # last resort: use first two tokens as name
+    tokens = tokens[:2]
+    base = sanitize_filename("_".join(tokens))
     if re.search(r'productiv', text, flags=re.I):
-        descriptor = 'Productivity'
+        base = f"{base}_Productivity"
     elif re.search(r'expend', text, flags=re.I):
-        descriptor = 'Expenditure'
-    elif re.search(r'area', text, flags=re.I):
-        descriptor = 'Area'
-    suffix = 'Div' if re.search(r'division|div', text, flags=re.I) else ''
-    parts = [crop_clean, descriptor]
-    if suffix:
-        parts.append(suffix)
-    return sanitize_filename("_".join([p for p in parts if p]))
+        base = f"{base}_Expenditure"
+    return base or "Table"
 
 
 def build_short_filename(title: Optional[str], header: List[str], starting_page: int) -> Path:
-    if title:
-        base = shorten_name_from_text(title)
-    else:
-        # use first one or two header tokens to name
-        tokens = [re.sub(r'[^A-Za-z0-9]', '', h).title() for h in header if h and re.sub(r'[^A-Za-z0-9]', '', h)]
-        tokens = tokens[:2] if tokens else ['Table']
-        base = sanitize_filename("_".join(tokens))
-        # try to add descriptor if header hints at productivity/expenditure
-        joined = "_".join(tokens)
-        if re.search(r'productiv', joined, flags=re.I):
-            base = f"{base}_Productivity"
-        elif re.search(r'expend', joined, flags=re.I):
-            base = f"{base}_Expenditure"
+    base = shorten_name_from_text(title or "", header)
     fname = f"{starting_page}_{base}.csv"
     return Path(fname)
 
@@ -307,8 +371,8 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
                     gc.collect()
                     continue
 
-                # Do NOT append to arbitrary existing CSVs from previous runs to avoid accidental merges.
-                # New table: create file using short name and starting page prefix
+                # New table: create file using short name and starting page prefix.
+                # Ensure crop name is prioritized by passing header into name generator.
                 short_path = build_short_filename(title, header, pnum)
                 csv_path = out_dir / short_path.name
                 base_stem = csv_path.stem
@@ -340,10 +404,11 @@ def extract(pdf_path: str, out_dir: str, start_page: Optional[int], end_page: Op
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with strict continuation rules and shortened names")
+    parser = argparse.ArgumentParser(description="Extract tables from PDF to CSV with strict continuation rules and shortened names (crop-first)")
     parser.add_argument("pdf", help="PDF file path")
     parser.add_argument("out", help="Output directory for CSVs")
     parser.add_argument("--start", type=int, default=None, help="Start page (1-based)")
     parser.add_argument("--end", type=int, default=None, help="End page (inclusive)")
     args = parser.parse_args()
     extract(args.pdf, args.out, args.start, args.end)
+# ...existing code...
