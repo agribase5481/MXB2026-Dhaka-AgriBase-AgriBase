@@ -109,26 +109,49 @@ def find_column(table: str, candidates: List[str]) -> Optional[str]:
 def find_district_column(table: str) -> Optional[str]:
     return find_column(table, ['District_Division', 'District', 'Unnamed: 1', 'District_Div'])
 
+# Modify the find_production_column function to work with fixed headers
 def find_production_column(table: str) -> Optional[str]:
-    # heuristics to find production column (2023-24 or similar)
-    col = find_column(table, ['2023-24', '2023_24', '2023', 'Production_2023-24', '2023-24_Production_MT', '2023_24_Production_MT', 'Production_MT', 'Production'])
-    if col:
-        return col
-    # fallback: pick first column that looks numeric by sampling one row
+    """Find the production column in a table with fixed headers."""
+    # Try common production column patterns
+    production_patterns = [
+        '2023_24',
+        '2023_2024',
+        'Production_2023_24',
+        'Total_Production',
+        'Production_MT',
+        'Production'
+    ]
+
+    cols = get_table_columns(table)
+
+    # First try exact matches
+    for pattern in production_patterns:
+        for col in cols:
+            if pattern.lower() == col.lower():
+                return col
+
+    # Then try partial matches
+    for pattern in production_patterns:
+        for col in cols:
+            if pattern.lower() in col.lower():
+                return col
+
+    # Finally, try to find any numeric column
     try:
         cur = get_db().execute(f'SELECT * FROM "{table}" LIMIT 1')
         row = cur.fetchone()
         cur.close()
         if row:
-            for k in row.keys():
-                v = row[k]
+            for col in cols:
+                val = row[col]
                 try:
-                    float(str(v).replace(',', ''))
-                    return k
-                except Exception:
+                    float(str(val).replace(',', ''))
+                    return col
+                except (ValueError, TypeError):
                     continue
     except Exception:
         pass
+
     return None
 def fix_table_headers(table_name: str) -> None:
     """Fixes split headers by merging first two rows and removing unnamed columns."""
