@@ -280,7 +280,7 @@ def pie_charts():
         if data:
             chart_title = table.replace('pie_', '').replace('_', ' ').title() + ' Distribution'
             labels = [row['Category'] for row in data]
-            percentages = [float(row['Percentage'] or 0) for row in data]
+            percentages = [(row['Percentage'] or 0) for row in data]
             all_chart_data.append({
                 'title': chart_title,
                 'labels': labels,
