@@ -3,16 +3,14 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, g, flash, jsonify
 import os
-from dotenv import load_dotenv
 import pandas as pd
 
-# Load environment variables
-load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'ee01b05594e9ea2b8a9d2448fef1222951abbd044751bea9'
 DATABASE = 'agri-base.db'
 AI_DATABASE = 'predictions.db'  # Separate DB for AI bot
+api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
 
 # Initialize LangChain components globally (cached)
 qa_chain = None
@@ -85,7 +83,7 @@ def initialize_qa_chain():
     global qa_chain
     
     try:
-        api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
+        
         if not api_key:
             print("[WARNING] GEMINI_API_KEY not set")
             return False
@@ -401,7 +399,7 @@ def chat_health():
     global qa_chain
     return jsonify({
         "ready": qa_chain is not None,
-        "api_key_set": bool(os.getenv("GEMINI_API_KEY")),
+        "api_key_set": bool(api_key),
         "ai_db_exists": os.path.exists(AI_DATABASE)
     })
 
