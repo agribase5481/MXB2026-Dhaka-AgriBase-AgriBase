@@ -54,6 +54,80 @@ def clean_results(results):
     cleaned = results
     return cleaned
 
+
+
+# New helpers
+def table_exists(name: str) -> bool:
+    cur = get_db().execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,))
+    r = cur.fetchone()
+    cur.close()
+    return bool(r)
+
+def list_tables() -> List[str]:
+    return [r['name'] for r in query_db("SELECT name FROM sqlite_master WHERE type='table'")]
+
+def get_table_columns(table: str) -> List[str]:
+    cur = get_db().execute(f"PRAGMA table_info('{table}')")
+    rows = cur.fetchall()
+    cur.close()
+    return [r[1] for r in rows] if rows else []
+
+def find_table_for_crop(crop: str) -> Optional[str]:
+    """Try common table name patterns, otherwise fall back to partial match."""
+    slug = re.sub(r'[^0-9a-z]+', '_', crop.lower()).strip('_')
+    candidates = [
+        f"{slug}_total_by_district",
+        f"{slug}_by_district",
+        f"{slug}_total",
+        f"{slug}_estimates_district",
+        f"{slug}_estimates",
+        slug
+    ]
+    for c in candidates:
+        if table_exists(c):
+            return c
+    # fallback: any table that contains the slug fragment
+    for t in list_tables():
+        if slug in t:
+            return t
+    return None
+
+def find_column(table: str, candidates: List[str]) -> Optional[str]:
+    cols = get_table_columns(table)
+    for cand in candidates:
+        for c in cols:
+            if cand.lower() == c.lower() or cand.lower() in c.lower():
+                return c
+    return None
+
+def find_district_column(table: str) -> Optional[str]:
+    return find_column(table, ['District_Division', 'District', 'Unnamed: 1', 'District_Div'])
+
+def find_production_column(table: str) -> Optional[str]:
+    # heuristics to find production column (2023-24 or similar)
+    col = find_column(table, ['2023-24', '2023_24', '2023', 'Production_2023-24', '2023-24_Production_MT', '2023_24_Production_MT', 'Production_MT', 'Production'])
+    if col:
+        return col
+    # fallback: pick first column that looks numeric by sampling one row
+    try:
+        cur = get_db().execute(f'SELECT * FROM "{table}" LIMIT 1')
+        row = cur.fetchone()
+        cur.close()
+        if row:
+            for k in row.keys():
+                v = row[k]
+                try:
+                    float(str(v).replace(',', ''))
+                    return k
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return None
+
+
+
+
 # --- CROP LISTS ---
 # Full list of crops for the dropdowns, based on your screenshots
 CROP_HIERARCHY = {
