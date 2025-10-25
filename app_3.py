@@ -56,6 +56,7 @@ def clean_results(results):
 
 
 
+
 # New helpers
 def table_exists(name: str) -> bool:
     cur = get_db().execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,))
@@ -76,10 +77,10 @@ def find_table_for_crop(crop: str) -> Optional[str]:
     """Try common table name patterns, otherwise fall back to partial match."""
     slug = re.sub(r'[^0-9a-z]+', '_', crop.lower()).strip('_')
     candidates = [
-        f"{slug}_total_by_district",
-        f"{slug}_by_district",
+        f"{slug}_total_dist_{slug}",
+        f"{slug}_dist_{slug}",
         f"{slug}_total",
-        f"{slug}_estimates_district",
+        f"{slug}_estimates_dist",
         f"{slug}_estimates",
         slug
     ]
@@ -217,7 +218,7 @@ def yield_summary():
 
 
 
-                           
+
 
 @app.route('/crop_analysis', methods=['GET', 'POST'])
 def crop_analysis():
