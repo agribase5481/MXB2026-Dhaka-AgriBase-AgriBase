@@ -64,16 +64,16 @@ def table_exists(name: str) -> bool:
     cur.close()
     return bool(r)
 
-def list_tables() -> List[str]:
+def list_tables() -> list[str]:
     return [r['name'] for r in query_db("SELECT name FROM sqlite_master WHERE type='table'")]
 
-def get_table_columns(table: str) -> List[str]:
+def get_table_columns(table: str) -> list[str]:
     cur = get_db().execute(f"PRAGMA table_info('{table}')")
     rows = cur.fetchall()
     cur.close()
     return [r[1] for r in rows] if rows else []
 
-def find_table_for_crop(crop: str) -> Optional[str]:
+def find_table_for_crop(crop: str) -> optional[str]:
     """Try common table name patterns, otherwise fall back to partial match."""
     slug = re.sub(r'[^0-9a-z]+', '_', crop.lower()).strip('_')
     candidates = [
