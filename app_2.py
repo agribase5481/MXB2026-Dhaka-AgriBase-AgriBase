@@ -137,7 +137,7 @@ def initialize():
 @app.route('/')
 def index():
     """Renders the home page with a list of available crops."""
-    return render_template('index.html', crop_names=ALL_CROP_NAMES)
+    return render_template('index_2.html', crop_names=ALL_CROP_NAMES)
 
 
 @app.route('/predict', methods=['POST'])
