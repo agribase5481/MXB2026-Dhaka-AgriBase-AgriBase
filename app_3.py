@@ -130,6 +130,55 @@ def find_production_column(table: str) -> Optional[str]:
     except Exception:
         pass
     return None
+def fix_table_headers(table_name: str) -> None:
+    """Fixes split headers by merging first two rows and removing unnamed columns."""
+    try:
+        # Read the table into a pandas DataFrame
+        conn = get_db()
+        df = pd.read_sql_query(f'SELECT * FROM "{table_name}"', conn)
+
+        # Check if we have unnamed columns that might indicate split headers
+        unnamed_cols = [col for col in df.columns if 'unnamed' in col.lower()]
+        if not unnamed_cols:
+            return
+
+        # Get the first two rows that might contain the split header
+        header_row1 = df.columns.tolist()
+        header_row2 = df.iloc[0].tolist()
+
+        # Merge the headers
+        new_headers = []
+        for i, (h1, h2) in enumerate(zip(header_row1, header_row2)):
+            if 'unnamed' in str(h1).lower():
+                new_headers.append(str(h2))
+            else:
+                if pd.isna(h2) or str(h2).strip() == '':
+                    new_headers.append(str(h1))
+                else:
+                    new_headers.append(f"{h1}_{h2}")
+
+        # Clean up the headers
+        new_headers = [h.strip() for h in new_headers]
+        new_headers = [h.replace(' ', '_') for h in new_headers]
+        new_headers = [h if h else f'Column_{i}' for i, h in enumerate(new_headers)]
+
+        # Remove the first row (now merged into headers) and set new column names
+        df = df.iloc[1:].reset_index(drop=True)
+        df.columns = new_headers
+
+        # Write back to the database
+        df.to_sql(table_name, conn, index=False, if_exists='replace')
+        conn.commit()
+
+    except Exception as e:
+        print(f"Error fixing headers for table {table_name}: {str(e)}")
+
+def fix_all_crop_tables() -> None:
+    """Fixes headers for all crop-related tables in the database."""
+    tables = list_tables()
+    for table in tables:
+        if any(x in table.lower() for x in ['dist', 'total', 'production']):
+            fix_table_headers(table)
 
 
 
