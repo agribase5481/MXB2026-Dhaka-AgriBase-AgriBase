@@ -15,20 +15,20 @@ DATABASE = 'attempt.db'
 
 # --- DATABASE HELPER FUNCTIONS ---
 
+# Modify the get_db function to include header fixing on first connection
 def get_db():
     """Get a database connection from the application context."""
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE)
-
-
-
-        # FIX 2: Handle text encoding errors like in 'Cox's Bazar'.
-        # This tells sqlite3 to use the 'latin-1' encoding, which prevents decoding crashes.
         db.text_factory = lambda b: b.decode('latin-1')
-
-        # Return rows as dictionaries
         db.row_factory = sqlite3.Row
+
+        # Fix headers for all tables on first connection
+        if not hasattr(g, '_headers_fixed'):
+            fix_all_crop_tables()
+            g._headers_fixed = True
+
     return db
 
 @app.teardown_appcontext
