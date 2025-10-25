@@ -131,7 +131,7 @@ def yield_summary():
         # 3. Extract and safely convert chart data
         # Using the same safe conversion method here for consistency
         chart_data = [
-            float((row['2023-24_Production_000_MT'] or '0').replace(',', ''))
+            float((row['2023-24_Production_MT'] or '0').replace(',', ''))
             for row in summary_data
         ]
 
