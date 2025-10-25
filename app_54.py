@@ -12,7 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = 'ee01b05594e9ea2b8a9d2448fef1222951abbd044751bea9'
 DATABASE = 'agri-base.db'
-AI_DATABASE = 'attempt.db'  # Separate DB for AI bot
+AI_DATABASE = 'predictions.db'  # Separate DB for AI bot
 
 # Initialize LangChain components globally (cached)
 qa_chain = None
@@ -81,56 +81,28 @@ AVAILABLE_MAJOR_CROPS = ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat"]
 # --- AI CHATBOT FUNCTIONS ---
 #api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
 def initialize_qa_chain():
-    """Initialize the LangChain QA chain with Gemini and SQLite"""
+    """Initialize simple Gemini chatbot with gemini-2.5-flash"""
     global qa_chain
     
     try:
-        # Check if API key exists
         api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
         if not api_key:
-            print("[WARNING] GEMINI_API_KEY not set in .env file")
-            print("[INFO] AI Chatbot will be disabled")
+            print("[WARNING] GEMINI_API_KEY not set")
             return False
         
-        # Ensure api_key is a string, not a tuple
-        api_key = str(api_key).strip()
+        import google.generativeai as genai
         
-        from langchain_community.utilities import SQLDatabase
-        from langchain_community.agent_toolkits import create_sql_agent
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        genai.configure(api_key=api_key)
         
-        # Check if database exists
-        if not os.path.exists(AI_DATABASE):
-            print(f"[WARNING] {AI_DATABASE} not found")
-            print("[INFO] Please create the AI database first")
-            return False
+        # Use the stable gemini-2.5-flash model
+        qa_chain = genai.GenerativeModel('gemini-2.5-flash')
         
-        # Connect to AI database
-        db = SQLDatabase.from_uri(f"sqlite:///{AI_DATABASE}")
-        
-        # Initialize Gemini LLM with correct model name
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",  # Changed from gemini-pro to gemini-1.5-pro
-            google_api_key=api_key,
-            temperature=0.3
-        )
-        
-        # Create SQL agent
-        qa_chain = create_sql_agent(
-            llm=llm,
-            db=db,
-            agent_type="openai-tools",
-            verbose=False,
-            max_iterations=3
-        )
-        
-        print("[OK] AI Chatbot initialized successfully")
+        print("[OK] AI Chatbot initialized with gemini-2.5-flash")
         return True
     
     except Exception as e:
         print(f"[ERROR] Error initializing AI chatbot: {str(e)}")
         return False
-
 
 
 # Initialize on app startup
@@ -347,18 +319,29 @@ def api_chat():
         if qa_chain is None:
             return jsonify({
                 "success": False,
-                "error": "AI bot not initialized",
-                "message": "AI bot is not available. Please check your Gemini API key in .env file."
+                "message": "AI bot not initialized"
             }), 503
         
-        # Get response from LangChain - use invoke() instead of run()
-        response = qa_chain.invoke({"input": user_message})
+        # Load database context
+        import sqlite3
+        conn = sqlite3.connect(AI_DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 20")
+        tables = cursor.fetchall()
+        table_list = ', '.join([t[0] for t in tables])
+        conn.close()
         
-        # Handle response - it might be a dict with 'output' key
-        if isinstance(response, dict):
-            answer = response.get('output', str(response))
-        else:
-            answer = str(response)
+        # Create prompt with context
+        prompt = f"""You are an agricultural assistant with access to crop production data.
+Available crop tables: {table_list}
+
+User question: {user_message}
+
+Provide a helpful agricultural response based on typical crop production patterns. If asked about specific crops or districts, provide general agricultural knowledge."""
+        
+        # Get response
+        response = qa_chain.generate_content(prompt)
+        answer = response.text if response.text else "No response generated"
         
         return jsonify({
             "success": True,
@@ -369,10 +352,8 @@ def api_chat():
         print(f"[ERROR] Error in /api/chat: {str(e)}")
         return jsonify({
             "success": False,
-            "error": str(e),
-            "message": "Sorry, I encountered an error. Please try again."
+            "message": f"Error: {str(e)}"
         }), 500
-
 
 
 @app.route('/api/chat/health', methods=['GET'])
