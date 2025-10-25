@@ -2,6 +2,11 @@
 
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, g, flash
+# Add these imports at the top of the file, after the existing imports
+from typing import Optional, List
+import re
+
+# ...existing code...
 
 
 app = Flask(__name__)
@@ -64,16 +69,16 @@ def table_exists(name: str) -> bool:
     cur.close()
     return bool(r)
 
-def list_tables() -> list[str]:
+def list_tables() -> List[str]:
     return [r['name'] for r in query_db("SELECT name FROM sqlite_master WHERE type='table'")]
 
-def get_table_columns(table: str) -> list[str]:
+def get_table_columns(table: str) -> List[str]:
     cur = get_db().execute(f"PRAGMA table_info('{table}')")
     rows = cur.fetchall()
     cur.close()
     return [r[1] for r in rows] if rows else []
 
-def find_table_for_crop(crop: str) -> optional[str]:
+def find_table_for_crop(crop: str) -> Optional[str]:
     """Try common table name patterns, otherwise fall back to partial match."""
     slug = re.sub(r'[^0-9a-z]+', '_', crop.lower()).strip('_')
     candidates = [
