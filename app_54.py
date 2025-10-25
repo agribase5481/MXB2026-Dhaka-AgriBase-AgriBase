@@ -213,6 +213,10 @@ def area_summary():
                             chart_data=chart_data)
 
 
+# /home/ubuntu/agri-base/app_54.py
+
+# ... (lines 173-220: previous routes) ...
+
 @app.route('/yield_summary')
 def yield_summary():
     """Interactive Yield Summary Report."""
@@ -224,16 +228,24 @@ def yield_summary():
     labels = []
     chart_data = []
 
-    # FIX: Get keys from the first row object if the list is not empty
     if summary_data:
+        # FIX 1: Get keys from the first row object. Check the list is not empty.
         table_headers = summary_data[0].keys()
 
-        # Simple data filtering/extraction (kept as per user's original logic)
-        labels = [row['Crop'] for row in summary_data]
-        chart_data = [
-            float(str(row.get('2023-24_Production_000_MT', '0')).replace(',', '') or '0')
-            for row in summary_data
-        ]
+        # Iterate over summary_data, accessing elements via row['Key']
+        labels = [row['Crop'] for row in summary_data if 'Crop' in row.keys()]
+
+        # FIX 2: Replace .get() with safer direct access and conversion logic.
+        chart_data = []
+        for row in summary_data:
+            production_str = row['2023-24_Production_000_MT'] if '2023-24_Production_000_MT' in row.keys() and row['2023-24_Production_000_MT'] is not None else '0'
+            try:
+                # Clean up commas and convert to float
+                chart_data.append(float(production_str.replace(',', '')))
+            except ValueError:
+                # Handle cases where data is truly non-numeric
+                chart_data.append(0.0)
+
 
     return render_template('yield_summary.html',
                             summary_data=summary_data,
@@ -241,7 +253,7 @@ def yield_summary():
                             labels=labels,
                             chart_data=chart_data)
 
-
+# ... (Rest of the app remains the same, assuming prior fixes are still in place) ...
 @app.route('/crop_analysis', methods=['GET', 'POST'])
 def crop_analysis():
     """Crop analysis page to search data by crop and district."""
