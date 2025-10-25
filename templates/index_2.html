@@ -48,6 +48,74 @@
 
         <div id="errorMessage" class="error" style="display:none;"></div>
     </div>
+    <!-- AI Chatbot Floating Button -->
+    <div class="ai-chatbot-container">
+        <button class="ai-chatbot-button" id="aiChatbotBtn" onclick="openAIChat()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span class="ai-tooltip">Ask AI Bot</span>
+        </button>
+    </div>
+
+    <script>
+    function openAIChat() {
+        window.location.href = '/ai_chatbot';
+    }
+    </script>
+
+    <!-- Add CSS -->
+    <style>
+    .ai-chatbot-container {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 999;
+    }
+
+    .ai-chatbot-button {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .ai-chatbot-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .ai-chatbot-button:active {
+        transform: scale(0.95);
+    }
+
+    .ai-tooltip {
+        position: absolute;
+        right: 80px;
+        background: #333;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        font-size: 12px;
+    }
+
+    .ai-chatbot-button:hover .ai-tooltip {
+        opacity: 1;
+    }
+    </style>
+
 
     <script>
         document.getElementById('predictionForm').addEventListener('submit', function(e) {
