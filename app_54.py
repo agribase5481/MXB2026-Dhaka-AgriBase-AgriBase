@@ -9,7 +9,7 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = 'ee01b05594e9ea2b8a9d2448fef1222951abbd044751bea9'
 DATABASE = 'agri-base.db'
-AI_DATABASE = 'predictions.db'  # Separate DB for AI bot
+AI_DATABASE = 'predictions.db', 'attempt.db'  # Separate DB for AI bot
 api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
 
 # Initialize LangChain components globally (cached)
@@ -81,23 +81,23 @@ AVAILABLE_MAJOR_CROPS = ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat"]
 def initialize_qa_chain():
     """Initialize simple Gemini chatbot with gemini-2.5-flash"""
     global qa_chain
-    
+
     try:
-        
+
         if not api_key:
             print("[WARNING] GEMINI_API_KEY not set")
             return False
-        
+
         import google.generativeai as genai
-        
+
         genai.configure(api_key=api_key)
-        
+
         # Use the stable gemini-2.5-flash model
         qa_chain = genai.GenerativeModel('gemini-2.5-flash')
-        
+
         print("[OK] AI Chatbot initialized with gemini-2.5-flash")
         return True
-    
+
     except Exception as e:
         print(f"[ERROR] Error initializing AI chatbot: {str(e)}")
         return False
@@ -306,31 +306,31 @@ def ai_chatbot():
 def api_chat():
     """API endpoint with smart data loading"""
     global qa_chain
-    
+
     try:
         data = request.json
         user_message = data.get('message', '').strip()
-        
+
         if not user_message:
             return jsonify({"error": "Empty message"}), 400
-        
+
         if qa_chain is None:
             return jsonify({
                 "success": False,
                 "message": "AI bot not initialized"
             }), 503
-        
+
         import sqlite3
         conn = sqlite3.connect(AI_DATABASE)
         cursor = conn.cursor()
-        
+
         # Get table names
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         all_tables = [t[0] for t in cursor.fetchall()]
-        
+
         # Build context - check if user is asking about predictions or historical data
         data_context = ""
-        
+
         if 'predict' in user_message.lower() or 'forecast' in user_message.lower() or 'next' in user_message.lower():
             # Include prediction tables
             data_context = "NEXT YEAR PRODUCTION PREDICTIONS:\n\n"
@@ -357,9 +357,9 @@ def api_chat():
                             data_context += "\n"
                     except:
                         pass
-        
+
         conn.close()
-        
+
         # Enhanced prompt
         prompt = f"""You are an expert agricultural analyst with access to Bangladesh crop production data.
 
@@ -373,16 +373,16 @@ Please provide an accurate, data-driven response:
 3. For predictions, clearly indicate these are forecasts for next year
 4. For historical data, reference the actual years in the dataset
 5. Be concise but informative"""
-        
+
         # Get response
         response = qa_chain.generate_content(prompt)
         answer = response.text if response.text else "I couldn't generate a response."
-        
+
         return jsonify({
             "success": True,
             "message": answer
         })
-    
+
     except Exception as e:
         print(f"[ERROR] Error in /api/chat: {str(e)}")
         return jsonify({
