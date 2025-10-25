@@ -306,7 +306,7 @@ def ai_chatbot():
 
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
-    """API endpoint for chatbot responses"""
+    """API endpoint with smart data loading"""
     global qa_chain
     
     try:
@@ -322,26 +322,63 @@ def api_chat():
                 "message": "AI bot not initialized"
             }), 503
         
-        # Load database context
         import sqlite3
         conn = sqlite3.connect(AI_DATABASE)
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 20")
-        tables = cursor.fetchall()
-        table_list = ', '.join([t[0] for t in tables])
+        
+        # Get table names
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        all_tables = [t[0] for t in cursor.fetchall()]
+        
+        # Build context - check if user is asking about predictions or historical data
+        data_context = ""
+        
+        if 'predict' in user_message.lower() or 'forecast' in user_message.lower() or 'next' in user_message.lower():
+            # Include prediction tables
+            data_context = "NEXT YEAR PRODUCTION PREDICTIONS:\n\n"
+            for table_name in all_tables:
+                if '_predictions' in table_name:
+                    try:
+                        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+                        crop_name = table_name.replace('_predictions', '')
+                        data_context += f"\nCrop: {crop_name}\n"
+                        data_context += df.to_string()
+                        data_context += "\n"
+                    except:
+                        pass
+        else:
+            # Include historical data for the crops mentioned in question
+            data_context = "HISTORICAL CROP DATA:\n\n"
+            for table_name in all_tables:
+                if '_predictions' not in table_name:
+                    try:
+                        df = pd.read_sql_query(f"SELECT * FROM {table_name} LIMIT 10", conn)
+                        if not df.empty:
+                            data_context += f"\nCrop: {table_name}\n"
+                            data_context += df.to_string()
+                            data_context += "\n"
+                    except:
+                        pass
+        
         conn.close()
         
-        # Create prompt with context
-        prompt = f"""You are an agricultural assistant with access to crop production data.
-Available crop tables: {table_list}
+        # Enhanced prompt
+        prompt = f"""You are an expert agricultural analyst with access to Bangladesh crop production data.
+
+{data_context}
 
 User question: {user_message}
 
-Provide a helpful agricultural response based on typical crop production patterns. If asked about specific crops or districts, provide general agricultural knowledge."""
+Please provide an accurate, data-driven response:
+1. Use specific numbers from the data provided
+2. Reference district names and years
+3. For predictions, clearly indicate these are forecasts for next year
+4. For historical data, reference the actual years in the dataset
+5. Be concise but informative"""
         
         # Get response
         response = qa_chain.generate_content(prompt)
-        answer = response.text if response.text else "No response generated"
+        answer = response.text if response.text else "I couldn't generate a response."
         
         return jsonify({
             "success": True,
@@ -352,8 +389,10 @@ Provide a helpful agricultural response based on typical crop production pattern
         print(f"[ERROR] Error in /api/chat: {str(e)}")
         return jsonify({
             "success": False,
-            "message": f"Error: {str(e)}"
+            "message": f"Sorry, I encountered an error: {str(e)}"
         }), 500
+
+
 
 
 @app.route('/api/chat/health', methods=['GET'])
