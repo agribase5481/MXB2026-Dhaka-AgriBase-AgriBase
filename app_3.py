@@ -68,7 +68,9 @@ CROP_HIERARCHY = {
 }
 
 # Crops for which we currently have data tables
-AVAILABLE_MAJOR_CROPS = ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat", "Maize", "Jower (Millet)", "Barley/Jab", "Cheena & Kaon", "Binnidana", "Lentil (Masur)", "Kheshari", "Mashkalai", "Mung", "Gram", "Motor", "Fallon", "Other Pulses"]
+AVAILABLE_MAJOR_CROPS = ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat", "Maize", "Jower (Millet)", "Barley/Jab", "Cheena & Kaon", "Binnidana", "Lentil (Masur)",
+                         "Kheshari", "Mashkalai", "Mung", "Gram", "Motor", "Fallon", "Other Pulses", "Rape and Mustard", "Til", "Groundnut", "Soyabean", "Linseed", "Coconut", "Sunflower",
+                         ]
 
 # --- FLASK ROUTES ---
 
