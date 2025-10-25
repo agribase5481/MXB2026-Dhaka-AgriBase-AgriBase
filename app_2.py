@@ -42,7 +42,7 @@ def query_db(query, args=(), one=False):
 
 def get_district_names():
     """Fetches a sorted list of unique district names from the database."""
-    districts = query_db("SELECT DISTINCT District_Division FROM aman_total_by_district ORDER BY District_Division")
+    districts = query_db("SELECT DISTINCT 'Unnamed: 1' FROM aman_bona_by_dist ORDER BY 'Unnamed: 1'")
     return [d['District_Division'] for d in districts]
 
 def get_pie_chart_tables():
