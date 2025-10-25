@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Prediction Web App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #38761d; text-align: center; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        select, button { width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background-color: #6aa84f; color: white; border: none; cursor: pointer; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: #38761d; }
+        .results { border-top: 2px solid #ccc; padding-top: 20px; margin-top: 20px; }
+        .results p { font-size: 1.1em; margin: 10px 0; }
+        .results strong { color: #38761d; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌾 Agricultural Prediction Model</h1>
+        <p>Select a crop to predict its Area Allocation and Yield per Acre for the upcoming year based on historical data.</p>
+
+        <form id="predictionForm">
+            <label for="crop_select">Select Crop:</label>
+            <select id="crop_select" name="crop_name" required>
+                <option value="" disabled selected>-- Choose a Crop --</option>
+                {% for crop in crop_names %}
+                    <option value="{{ crop }}">{{ crop }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Get Prediction</button>
+        </form>
+
+        <div class="results" id="predictionResults" style="display:none;">
+            <h2>Prediction for <span id="resultCropName"></span></h2>
+
+            <p>
+                Previous Area: <strong><span id="lastArea"></span></strong> |
+                Previous Yield: <strong><span id="lastYield"></span></strong>
+            </p>
+
+            <p>1. Predicted Area Allocation: <strong><span id="predictedArea"></span></strong></p>
+            <p>2. Predicted Yield Per Acre: <strong><span id="predictedYield"></span></strong></p>
+        </div>
+
+        <div id="errorMessage" class="error" style="display:none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            // Get selected crop name for display
+            const cropName = formData.get('crop_name');
+
+            fetch('/predict', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('predictionResults');
+                const errorDiv = document.getElementById('errorMessage');
+
+                if (data.error) {
+                    resultsDiv.style.display = 'none';
+                    errorDiv.textContent = 'Error: ' + data.error;
+                    errorDiv.style.display = 'block';
+                } else {
+                    errorDiv.style.display = 'none';
+
+                    document.getElementById('resultCropName').textContent = data.crop_name;
+                    document.getElementById('predictedArea').textContent = data.predicted_area;
+                    document.getElementById('predictedYield').textContent = data.predicted_yield;
+                    document.getElementById('lastArea').textContent = data.last_area_input;
+                    document.getElementById('lastYield').textContent = data.last_yield_input;
+
+                    resultsDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                document.getElementById('errorMessage').textContent = 'A network error occurred: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('predictionResults').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

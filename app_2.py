@@ -1,290 +1,197 @@
-# agribase/app.py
-
+import pandas as pd
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, g, flash
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
+from flask import Flask, render_template, request, jsonify
+import pickle
 
-
+# --- Configuration and Initialization ---
+DATABASE_FILE = 'attempt.db'
 app = Flask(__name__)
-app.secret_key = 'ee01b05594e9ea2b8a9d2448fef1222951abbd044751bea9'  # Needed for flash message
-DATABASE = 'attempt.db'
-
-# --- DATABASE HELPER FUNCTIONS ---
-
-def get_db():
-    """Get a database connection from the application context."""
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+# Global variables to hold models and encoder
+area_model = None
+yield_model = None
+crop_encoder = None
+ALL_CROP_NAMES = []
 
 
+def load_and_preprocess_data():
+    """
+    Connects to the SQLite DB, loads all yearly tables, merges them,
+    and prepares the data for time-series prediction using lagged features.
+    """
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
 
-        # FIX 2: Handle text encoding errors like in 'Cox's Bazar'.
-        # This tells sqlite3 to use the 'latin-1' encoding, which prevents decoding crashes.
-        db.text_factory = lambda b: b.decode('latin-1')
+    # 1. Get all table names (assuming each table is a year's data)
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    table_names = [row[0] for row in cursor.fetchall()]
 
-        # Return rows as dictionaries
-        db.row_factory = sqlite3.Row
-    return db
+    all_data = []
 
-@app.teardown_appcontext
-def close_connection(exception):
-    """Close the database connection at the end of the request."""
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+    # 2. Loop through all tables and load data
+    for table_name in table_names:
+        # Assuming table names are YEAR_CropData (e.g., '2019_CropData')
+        # You may need to adjust this SQL query based on your actual table and column names
+        query = f"SELECT * FROM {table_name}"
+        try:
+            df = pd.read_sql_query(query, conn)
+            # Standardize column names (adjust these to match your DB schema exactly)
+            df = df.rename(columns={
+                'Year': 'Year',
+                'CropName': 'Crop',
+                'Area_Allocated': 'Area',
+                'Yield_Per_Acre': 'Yield'
+            })
+            all_data.append(df)
+        except Exception as e:
+            print(f"Error loading table {table_name}: {e}")
+            continue
 
-def query_db(query, args=(), one=False):
-    """Execute a query and return the results."""
-    cur = get_db().execute(query, args)
-    rv = cur.fetchall()
-    cur.close()
-    return (rv[0] if rv else None) if one else rv
+    conn.close()
 
-def get_district_names():
-    """Fetches a sorted list of unique district names from the database."""
-    districts = query_db("SELECT DISTINCT 'Unnamed: 1' FROM aman_bona_by_dist ORDER BY 'Unnamed: 1'")
-    return [d['District_Division'] for d in districts]
+    if not all_data:
+        raise Exception("No data loaded from the database.")
 
-def get_pie_chart_tables():
-    """Finds all tables in the database with names starting with 'pie_'."""
-    tables = query_db("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'pie_%'")
-    return [table['name'] for table in tables]
+    df_combined = pd.concat(all_data, ignore_index=True)
 
-def clean_results(results):
-    cleaned = results
-    return cleaned
+    # --- Data Cleaning and Feature Engineering ---
+    global crop_encoder, ALL_CROP_NAMES
 
-# --- CROP LISTS ---
-# Full list of crops for the dropdowns, based on your screenshots
-CROP_HIERARCHY = {
-    "Major Cereals": ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat"],
-    "Minor Cereals": ["Maize", "Jower (Millet)", "Barley/Jab", "Cheena & Kaon", "Binnidana"],
-    "Pulses": ["Lentil (Masur)", "Kheshari", "Mashkalai", "Mung", "Gram", "Motor", "Fallon", "Other Pulses"],
-    "Oilseeds": ["Rape and Mustard", "Til", "Groundnut", "Soyabean", "Linseed", "Coconut", "Sunflower"],
-    "Spices": ["Onion", "Garlic", "Chillies", "Turmeric", "Ginger", "Coriander", "Other Spices"],
-    "Sugar Crops": ["Sugarcane", "Date Palm", "Palmyra Palm"],
-    "Fibers": ["Jute", "Cotton", "Sunhemp"],
-    "Narcotics": ["Tea", "Betelnut", "Betel Leaves", "Tobacco"],
-}
+    # Fill any missing values in target columns with their mean
+    df_combined['Area'].fillna(df_combined['Area'].mean(), inplace=True)
+    df_combined['Yield'].fillna(df_combined['Yield'].mean(), inplace=True)
 
-# Crops for which we currently have data tables
-AVAILABLE_MAJOR_CROPS = ["Aus Rice", "Aman Rice", "Boro Rice", "Wheat"]
+    # Sort data by crop and year for time-series modeling
+    df_combined.sort_values(by=['Crop', 'Year'], inplace=True)
 
-# --- FLASK ROUTES ---
+    # 3. Create Lagged Features (Previous Year's Area/Yield)
+    # This is how we convert time-series prediction into a regression problem:
+    # using past values to predict the next value.
+    df_combined['Area_Lag1'] = df_combined.groupby('Crop')['Area'].shift(1)
+    df_combined['Yield_Lag1'] = df_combined.groupby('Crop')['Yield'].shift(1)
+
+    # Drop the first row for each crop as Lag1 features will be missing
+    df_combined.dropna(subset=['Area_Lag1', 'Yield_Lag1'], inplace=True)
+
+    # 4. Encode the Crop name
+    crop_encoder = LabelEncoder()
+    df_combined['Crop_Encoded'] = crop_encoder.fit_transform(df_combined['Crop'])
+    ALL_CROP_NAMES = list(crop_encoder.classes_)
+
+    return df_combined
+
+def train_models(df):
+    """Trains the Area and Yield prediction models."""
+
+    # Features: Encoded Crop name, Previous Year's Area, Previous Year's Yield
+    features = ['Crop_Encoded', 'Area_Lag1', 'Yield_Lag1']
+
+    X = df[features]
+
+    # Target 1: Current Year's Area
+    Y_area = df['Area']
+
+    # Target 2: Current Year's Yield
+    Y_yield = df['Yield']
+
+    # Initialize and train the models
+    global area_model, yield_model
+
+    # Model 1: Area Prediction
+    area_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    area_model.fit(X, Y_area)
+    print("Area Model Trained.")
+
+    # Model 2: Yield Prediction
+    yield_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    yield_model.fit(X, Y_yield)
+    print("Yield Model Trained.")
+
+    return area_model, yield_model
+
+
+@app.before_first_request
+def initialize():
+    """Load data and train models once when the app starts."""
+    try:
+        # Load and preprocess data
+        df = load_and_preprocess_data()
+
+        # Save a copy of the last year's actual data for prediction feature input
+        last_year_data = df.loc[df.groupby('Crop')['Year'].idxmax()]
+        last_year_data[['Crop', 'Area', 'Yield']].to_csv('last_year_data.csv', index=False)
+
+        # Train models
+        train_models(df)
+
+    except Exception as e:
+        print(f"Initialization failed: {e}")
+        # In a real app, you would handle this more gracefully
+        global ALL_CROP_NAMES
+        ALL_CROP_NAMES = ["Error: Could not load data or train models."]
+
 
 @app.route('/')
 def index():
-    """Home page."""
-    return render_template('index.html')
+    """Renders the home page with a list of available crops."""
+    return render_template('index.html', crop_names=ALL_CROP_NAMES)
 
-# A common pattern for both routes
-@app.route('/area_summary')
-def area_summary():
-    """Interactive Area Summary Report."""
-    summary_data = query_db("SELECT * FROM area_summary")
-    summary_data = clean_results(summary_data)
 
-    # Initialize headers to an empty list
-    table_headers = []
+@app.route('/predict', methods=['POST'])
+def predict():
+    """Handles the prediction request."""
+    if area_model is None or yield_model is None:
+        return jsonify({'error': 'Prediction models not initialized. Check server logs.'})
 
-    # ONLY get headers and chart data if there's actual data
-    if summary_data:
-        table_headers = summary_data[0].keys()
-        labels = [row['Crop'] for row in summary_data]
-        chart_data = [float(row['Production_2023-24'] or 0) for row in summary_data]
-    else:
-        # If no data, ensure these are empty too, to prevent errors in the template
-        labels = []
-        chart_data = []
+    try:
+        # Get user input
+        crop_name = request.form['crop_name']
 
-    return render_template('area_summary.html',
-                           summary_data=summary_data,
-                           table_headers=table_headers, # Pass the (possibly empty) headers
-                           labels=labels,
-                           chart_data=chart_data)
+        # 1. Get the last recorded values for the selected crop
+        last_data_df = pd.read_csv('last_year_data.csv')
 
-@app.route('/yield_summary')
-def yield_summary():
-    """Interactive Yield Summary Report."""
-    summary_data = query_db("SELECT * FROM yield_summery")
+        # Find the last year's actual area and yield for the chosen crop to use as features
+        last_crop_data = last_data_df[last_data_df['Crop'] == crop_name]
 
-    # ✅ Apply cleaning
-    summary_data = clean_results(summary_data)
+        if last_crop_data.empty:
+            return jsonify({'error': f'No historical data found for crop: {crop_name}'})
 
-    # Initialize headers, labels, and chart data to empty lists
-    table_headers = []
-    labels = []
-    chart_data = []
+        # Features for the prediction (Lagged Features)
+        last_area = last_crop_data['Area'].iloc[0]
+        last_yield = last_crop_data['Yield'].iloc[0]
 
-    # ✅ Apply safe logic: ONLY process data if results exist
-    if summary_data:
-        # 1. Get headers safely
-        table_headers = summary_data[0].keys()
+        # Encode the crop name for the model input
+        crop_encoded = crop_encoder.transform([crop_name])[0]
 
-        # 2. Extract labels
-        labels = [row['Crop'] for row in summary_data]
+        # Create the input array for the models
+        prediction_input = np.array([[crop_encoded, last_area, last_yield]])
 
-        # 3. Extract and safely convert chart data
-        # Using the same safe conversion method here for consistency
-        chart_data = [
-            float((row['2023-24_Production_000_MT'] or '0').replace(',', ''))
-            for row in summary_data
-        ]
+        # 2. Make Predictions
 
-    return render_template('yield_summary.html',
-                           summary_data=summary_data,
-                           table_headers=table_headers,
-                           labels=labels,
-                           chart_data=chart_data)
+        # Prediction 1: Area Allocation
+        predicted_area = area_model.predict(prediction_input)[0]
 
-@app.route('/crop_analysis', methods=['GET', 'POST'])
-def crop_analysis():
-    """Crop analysis page to search data by crop and district."""
-    districts = get_district_names()
-    results = None
-    table_headers = []
+        # Prediction 2: Yield Per Acre
+        predicted_yield = yield_model.predict(prediction_input)[0]
 
-    if request.method == 'POST':
-        selected_crop = request.form.get('crop')
-        selected_district = request.form.get('district')
-
-        if selected_crop not in AVAILABLE_MAJOR_CROPS:
-            flash(f"Analysis for '{selected_crop}' is not available yet. Please select one of the major cereals.", 'warning')
-            return redirect(url_for('crop_analysis'))
-
-        table_prefix_map = {
-            "Aus Rice": "aus",
-            "Aman Rice": "aman",
-            "Boro Rice": "boro",
-            "Wheat": "wheat"
+        # 3. Format and return results
+        results = {
+            'crop_name': crop_name,
+            'predicted_area': f'{predicted_area:,.2f}',
+            'predicted_yield': f'{predicted_yield:,.2f}',
+            'last_area_input': f'{last_area:,.2f}',
+            'last_yield_input': f'{last_yield:,.2f}'
         }
-        table_prefix = table_prefix_map.get(selected_crop)
 
-        table_name = "wheat_estimates_district" if table_prefix == "wheat" else f"{table_prefix}_total_by_district"
+        return jsonify(results)
 
-        query = f"SELECT * FROM {table_name} WHERE District_Division = ?"
-        results = query_db(query, [selected_district])
-
-        if results:
-            results = clean_results(results)
-            # Only set headers if results exist
-            table_headers = results[0].keys()
-        else:
-            # If no results, explicitly ensure headers are an empty list
-            table_headers = []
-
-    return render_template('crop_analysis.html',
-                           crop_hierarchy=CROP_HIERARCHY,
-                           districts=districts,
-                           results=results,
-                           table_headers=table_headers)
-
-@app.route('/top_producers', methods=['GET', 'POST'])
-def top_producers():
-    """Page to find top producing districts for a crop, or top crops for a district."""
-    districts = get_district_names()
-    results = None
-    result_type = None
-
-    if request.method == 'POST':
-        if 'submit_top_districts' in request.form:
-            result_type = 'top_districts'
-            crop = request.form.get('crop')
-            variety = request.form.get('variety')
-
-            table_prefix_map = {"Aus Rice": "aus", "Aman Rice": "aman", "Boro Rice": "boro"}
-            table_prefix = table_prefix_map.get(crop)
-
-            if table_prefix:
-                table_name = f"{table_prefix}_{variety}_by_district"
-            elif crop == "Wheat":
-                    table_name = "wheat_estimates_district"
-
-            query = f"""
-                SELECT District_Division, "2023-24_Production_MT"
-                FROM {table_name}
-                WHERE "2023-24_Production_MT" IS NOT NULL AND "2023-24_Production_MT" != ''
-                AND District_Division != 'Bangladesh' AND District_Division NOT LIKE '%Division'
-                AND District_Division NOT LIKE '%Divison'
-                ORDER BY CAST("2023-24_Production_MT" AS REAL) DESC
-                LIMIT 10
-            """
-            results = query_db(query)
-            results = clean_results(results)
-
-
-        elif 'submit_top_crops' in request.form:
-            result_type = 'top_crops'
-            district = request.form.get('district')
-
-            query = """
-                SELECT 'Aus Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM aus_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Aman Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM aman_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Boro Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM boro_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Wheat' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM wheat_estimates_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            ORDER BY Production DESC
-            """
-            results = query_db(query, {'district': district})
-            results = clean_results(results)
-
-    return render_template('top_crop_district.html',
-                           available_crops=AVAILABLE_MAJOR_CROPS,
-                           districts=districts,
-                           results=results,
-                           result_type=result_type)
-
-@app.route('/pie_charts')
-def pie_charts():
-    """Generates and displays pie charts for all 'pie_' tables."""
-    pie_tables = get_pie_chart_tables()
-    all_chart_data = []
-
-    for table in pie_tables:
-        data = query_db(f"SELECT Category, Percentage FROM {table}")
-        data = clean_results(data)
-        if data:
-            chart_title = table.replace('pie_', '').replace('_', ' ').title() + ' Distribution'
-            labels = [row['Category'] for row in data]
-            percentages = [float(row['Percentage'] or 0) for row in data]
-            all_chart_data.append({
-                'title': chart_title,
-                'labels': labels,
-                'data': percentages,
-                'chart_id': f'chart_{table}'
-            })
-
-    return render_template('pie_charts.html', all_chart_data=all_chart_data)
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
+    # The models will be trained on the first request via @app.before_first_request
+    # To test locally, ensure your database is in the same directory.
     app.run(debug=True)
