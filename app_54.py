@@ -325,7 +325,7 @@ def api_chat():
         cursor = conn.cursor()
 
         # Get table names
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' and name like '%_dist%' ")
         all_tables = [t[0] for t in cursor.fetchall()]
 
         # Build context - check if user is asking about predictions or historical data
