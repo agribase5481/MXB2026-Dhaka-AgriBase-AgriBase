@@ -113,7 +113,7 @@ def train_models(df):
     return area_model, yield_model
 
 
-@app.before_first_request
+@app.before_request
 def initialize():
     """Load data and train models once when the app starts."""
     try:
