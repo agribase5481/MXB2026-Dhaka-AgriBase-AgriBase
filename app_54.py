@@ -9,7 +9,7 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = 'ee01b05594e9ea2b8a9d2448fef1222951abbd044751bea9'
 DATABASE = 'agri-base.db'
-AI_DATABASE = 'attempt.db'  # Separate DB for AI bot
+AI_DATABASE = 'predictions.db'  # Separate DB for AI bot
 api_key = "AIzaSyDYEx1xSi9QwRPIGL-qbAdtklFmMjj3JvQ"
 
 # Initialize LangChain components globally (cached)
