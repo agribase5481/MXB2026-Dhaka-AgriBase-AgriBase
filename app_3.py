@@ -40,16 +40,9 @@ def query_db(query, args=(), one=False):
     cur.close()
     return (rv[0] if rv else None) if one else rv
 
-# In app_3.py, around Line 46:
 def get_district_names():
-    # Assume 'districts' is generated here (e.g., by fetching data from one table)
-    # ... code to populate 'districts' ...
-
-    if districts:
-        # **ADD THIS LINE FOR DEBUGGING**
-        print("Available Keys:", districts[0].keys())
-
-    # Change the line below after you confirm the correct key name
+    """Fetches a sorted list of unique district names from the database."""
+    districts = query_db("SELECT DISTINCT 'Unnamed: 1' FROM aman_total_dist_2024 ORDER BY 'Unnamed: 1'")
     return [d['Unnamed: 1'] for d in districts]
 
 def get_pie_chart_tables():
