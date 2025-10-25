@@ -1,0 +1,203 @@
+District,Year,Hectares,Production_MT
+Bhola,2018-19,0.0,0.0
+Jhallokati,2018-19,65.0,0.0
+Patuakhali,2018-19,403.0,0.0
+Pirojpur,2018-19,0.0,0.0
+Barishal Division,2018-19,600.0,109.0
+Bandarban,2018-19,0.0,0.0
+Brahmanbaria,2018-19,0.0,79.0
+Chandpur,2018-19,0.0,209.0
+Chattogram,2018-19,115.0,43.0
+Cumilla,2018-19,238.0,76.0
+Cox’s Bazar,2018-19,0.0,0.0
+Feni,2018-19,0.0,0.0
+Khagrachari,2018-19,0.0,0.0
+Lakshmipur,2018-19,0.0,0.0
+Noakhali,2018-19,232.0,36.0
+Rangamati,2018-19,0.0,0.0
+Chattogram Division,2018-19,585.0,443.0
+Dhaka,2018-19,3004.0,812.4
+Faridpur,2018-19,0.0,0.0
+Gazipur,2018-19,0.0,0.0
+Gopalganj,2018-19,0.0,0.0
+Kishoreganj,2018-19,0.0,0.0
+Madaripur,2018-19,0.0,0.0
+Manikganj,2018-19,0.0,37.0
+Munshiganj,2018-19,975.0,120.5
+Narayanganj,2018-19,531.0,92.97
+Narsingdi,2018-19,89.0,33.0
+Rajbari,2018-19,1158.0,165.0
+Shariatpur,2018-19,0.0,30.0
+Tangail,2018-19,348.0,125.77
+Dhaka Division,2018-19,6105.0,1416.64
+Bagerhat,2018-19,0.0,0.0
+Chuadanga,2018-19,409.0,197.0
+Jashore,2018-19,214.0,49.0
+Jhenaidah,2018-19,1730.0,55.0
+Khulna,2018-19,1.0,0.0
+Kushtia,2018-19,1198.0,346.0
+Magura,2018-19,0.0,57.0
+Meherpur,2018-19,1865.0,313.0
+Narail,2018-19,0.0,61.0
+Satkhira,2018-19,0.0,0.0
+Khulna Division,2018-19,5417.0,1078.0
+Jamalpur,2018-19,67.0,23.0
+Mymensingh,2018-19,16.0,30.0
+Netrokona,2018-19,0.0,0.0
+Sherpur,2018-19,0.0,0.0
+Mymensingh Division,2018-19,83.0,53.0
+Bogura,2018-19,457.0,162.0
+Joypurhat,2018-19,0.0,7.85
+Naogaon,2018-19,28.0,7.0
+Natore,2018-19,0.0,0.0
+Chapai Nawabganj,2018-19,67.0,34.0
+Pabna,2018-19,14033.0,1755.0
+Rajshahi,2018-19,0.0,0.0
+Sirajganj,2018-19,164.0,84.5
+Rajshahi Division,2018-19,14749.0,2050.35
+Dinajpur,2018-19,104.0,153.0
+Gaibandha,2018-19,64.0,54.0
+Kurigram,2018-19,24.0,2.2
+Lalmonirhat,2018-19,149.0,34.0
+Nilphamari,2018-19,89.0,8.0
+Panchagar,2018-19,0.0,173.0
+Rangpur,2018-19,319.0,155.0
+Thakurgaon,2018-19,27.0,0.0
+Rangpur Divison,2018-19,776.0,579.2
+Habiganj,2018-19,0.0,0.0
+Moulvibazar,2018-19,0.0,0.0
+Sunamganj,2018-19,0.0,0.0
+Sylhet,2018-19,0.0,0.0
+Sylhet Division,2018-19,0.0,0.0
+Bhola,2020-21,0.0,0.0
+Jhallokati,2020-21,0.0,0.0
+Patuakhali,2020-21,0.0,0.0
+Pirojpur,2020-21,0.0,0.0
+Barishal Division,2020-21,111.0,133.0
+Bandarban,2020-21,0.0,0.0
+Brahmanbaria,2020-21,188.0,83.0
+Chandpur,2020-21,936.0,0.0
+Chattogram,2020-21,115.0,44.35
+Cumilla,2020-21,492.0,108.35
+Cox’s Bazar,2020-21,0.0,67.77
+Feni,2020-21,0.0,0.0
+Khagrachari,2020-21,0.0,0.0
+Lakshmipur,2020-21,0.0,73.0
+Noakhali,2020-21,39.0,40.0
+Rangamati,2020-21,0.0,0.0
+Chattogram Division,2020-21,1770.0,416.47
+Dhaka,2020-21,3600.98,866.0
+Faridpur,2020-21,0.0,0.0
+Gazipur,2020-21,0.0,0.0
+Gopalganj,2020-21,0.0,0.0
+Kishoreganj,2020-21,0.0,0.0
+Madaripur,2020-21,0.0,0.0
+Manikganj,2020-21,114.0,57.55
+Munshiganj,2020-21,961.55,158.0
+Narayanganj,2020-21,613.76,87.29
+Narsingdi,2020-21,132.0,36.0
+Rajbari,2020-21,1606.0,181.0
+Shariatpur,2020-21,62.0,64.0
+Tangail,2020-21,370.31,127.0
+Dhaka Division,2020-21,7460.6,1576.84
+Bagerhat,2020-21,0.0,6.5
+Chuadanga,2020-21,504.0,215.0
+Jashore,2020-21,259.0,51.2
+Jhenaidah,2020-21,561.0,349.0
+Khulna,2020-21,0.0,84.25
+Kushtia,2020-21,1329.0,513.0
+Magura,2020-21,556.0,80.5
+Meherpur,2020-21,2118.0,376.0
+Narail,2020-21,186.0,110.0
+Satkhira,2020-21,0.0,33.0
+Khulna Division,2020-21,5513.0,1818.45
+Jamalpur,2020-21,56.0,73.0
+Mymensingh,2020-21,25.5,39.0
+Netrokona,2020-21,0.0,14.0
+Sherpur,2020-21,0.0,35.0
+Mymensingh Division,2020-21,81.5,161.0
+Bogura,2020-21,419.9,302.0
+Joypurhat,2020-21,16.95,181.0
+Naogaon,2020-21,39.2,68.2
+Natore,2020-21,0.0,0.0
+Chapai Nawabganj,2020-21,98.62,47.0
+Pabna,2020-21,14544.0,2057.0
+Rajshahi,2020-21,0.0,0.0
+Sirajganj,2020-21,591.5,437.0
+Rajshahi Division,2020-21,15710.17,3092.2
+Dinajpur,2020-21,553.0,242.0
+Gaibandha,2020-21,206.0,63.0
+Kurigram,2020-21,5.28,4.25
+Lalmonirhat,2020-21,350.0,41.0
+Nilphamari,2020-21,16.0,20.06
+Panchagar,2020-21,903.0,205.0
+Rangpur,2020-21,772.0,254.0
+Thakurgaon,2020-21,0.0,38.2
+Rangpur Divison,2020-21,2805.28,867.51
+Habiganj,2020-21,0.0,0.0
+Moulvibazar,2020-21,0.0,0.0
+Sunamganj,2020-21,0.0,0.0
+Sylhet,2020-21,0.0,0.0
+Sylhet Division,2020-21,0.0,0.0
+Bhola,2022-23,0.0,58.0
+Jhallokati,2022-23,0.0,0.0
+Patuakhali,2022-23,0.0,0.0
+Pirojpur,2022-23,0.0,0.0
+Bandarban,2022-23,0.0,0.0
+Brahmanbaria,2022-23,200.25,173.0
+Chandpur,2022-23,0.0,50.52
+Chattogram,2022-23,116.84,106.45
+Cumilla,2022-23,1132.56,111.6
+Cox’s Bazar,2022-23,273.35,74.42
+Feni,2022-23,0.0,0.0
+Khagrachari,2022-23,0.0,0.0
+Lakshmipur,2022-23,556.0,90.2
+Noakhali,2022-23,115.8,51.03
+Rangamati,2022-23,0.0,0.0
+Dhaka,2022-23,4517.0,969.46
+Faridpur,2022-23,0.0,255.1
+Gazipur,2022-23,0.0,0.0
+Gopalganj,2022-23,0.0,0.0
+Kishoreganj,2022-23,0.0,22.75
+Madaripur,2022-23,0.0,0.0
+Manikganj,2022-23,337.0,152.57
+Munshiganj,2022-23,1157.0,167.0
+Narayanganj,2022-23,407.71,83.66
+Narsingdi,2022-23,138.0,44.47
+Rajbari,2022-23,1846.0,250.0
+Shariatpur,2022-23,518.0,79.0
+Tangail,2022-23,357.0,206.56
+Bagerhat,2022-23,48.12,22.0
+Chuadanga,2022-23,576.0,416.2
+Jashore,2022-23,275.0,53.0
+Jhenaidah,2022-23,4142.0,512.41
+Khulna,2022-23,164.32,297.75
+Kushtia,2022-23,6038.0,745.0
+Magura,2022-23,757.0,106.62
+Meherpur,2022-23,4391.0,416.0
+Narail,2022-23,375.0,125.0
+Satkhira,2022-23,115.0,32.0
+Jamalpur,2022-23,246.0,109.0
+Mymensingh,2022-23,81.0,33.0
+Netrokona,2022-23,58.0,65.0
+Sherpur,2022-23,115.0,47.0
+Bogura,2022-23,1044.0,502.0
+Joypurhat,2022-23,1944.0,340.0
+Naogaon,2022-23,812.0,189.0
+Natore,2022-23,0.0,155.0
+Chapai Nawabganj,2022-23,139.0,81.0
+Pabna,2022-23,21892.0,2427.0
+Rajshahi,2022-23,0.0,113.0
+Sirajganj,2022-23,3077.0,705.0
+Dinajpur,2022-23,5785.0,299.0
+Gaibandha,2022-23,246.0,103.0
+Kurigram,2022-23,10.2,4.83
+Lalmonirhat,2022-23,426.45,25.0
+Nilphamari,2022-23,99.18,67.58
+Panchagar,2022-23,1236.6,239.5
+Rangpur,2022-23,1859.0,284.0
+Thakurgaon,2022-23,225.6,41.2
+Habiganj,2022-23,0.0,0.0
+Moulvibazar,2022-23,0.0,26.0
+Sunamganj,2022-23,0.0,0.0
+Sylhet,2022-23,0.0,0.0
