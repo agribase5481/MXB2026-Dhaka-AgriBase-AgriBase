@@ -215,6 +215,10 @@ def yield_summary():
                            labels=labels,
                            chart_data=chart_data)
 
+
+
+                           
+
 @app.route('/crop_analysis', methods=['GET', 'POST'])
 def crop_analysis():
     """Crop analysis page to search data by crop and district."""
@@ -226,29 +230,25 @@ def crop_analysis():
         selected_crop = request.form.get('crop')
         selected_district = request.form.get('district')
 
-        if selected_crop not in AVAILABLE_MAJOR_CROPS:
-            flash(f"Analysis for '{selected_crop}' is not available yet. Please select one of the major cereals.", 'warning')
+        # Find table dynamically for the selected crop
+        table_name = find_table_for_crop(selected_crop)
+        if not table_name:
+            flash(f"No data table found for '{selected_crop}'.", 'warning')
             return redirect(url_for('crop_analysis'))
 
-        table_prefix_map = {
-            "Aus Rice": "aus",
-            "Aman Rice": "aman",
-            "Boro Rice": "boro",
-            "Wheat": "wheat"
-        }
-        table_prefix = table_prefix_map.get(selected_crop)
+        # Find the district column name in that table
+        district_col = find_district_column(table_name)
+        if not district_col:
+            flash(f"No district column found in table '{table_name}'.", 'warning')
+            return redirect(url_for('crop_analysis'))
 
-        table_name = "wheat_estimates_district" if table_prefix == "wheat" else f"{table_prefix}_total_by_district"
-
-        query = f"SELECT * FROM {table_name} WHERE District_Division = ?"
+        query = f'SELECT * FROM "{table_name}" WHERE "{district_col}" = ?'
         results = query_db(query, [selected_district])
 
         if results:
             results = clean_results(results)
-            # Only set headers if results exist
             table_headers = results[0].keys()
         else:
-            # If no results, explicitly ensure headers are an empty list
             table_headers = []
 
     return render_template('crop_analysis.html',
@@ -270,77 +270,73 @@ def top_producers():
             crop = request.form.get('crop')
             variety = request.form.get('variety')
 
-            table_prefix_map = {"Aus Rice": "aus", "Aman Rice": "aman", "Boro Rice": "boro"}
-            table_prefix = table_prefix_map.get(crop)
+            # try building table name from crop + variety, else find dynamically
+            prefix = re.sub(r'[^0-9a-z]+', '_', crop.lower()).strip('_')
+            candidate_table = f"{prefix}_{variety}_by_district"
+            if table_exists(candidate_table):
+                table_name = candidate_table
+            else:
+                # fallback to find by crop only
+                table_name = find_table_for_crop(crop)
 
-            if table_prefix:
-                table_name = f"{table_prefix}_{variety}_by_district"
-            elif crop == "Wheat":
-                    table_name = "wheat_estimates_district"
-
-            query = f"""
-                SELECT District_Division, "2023-24_Production_MT"
-                FROM {table_name}
-                WHERE "2023-24_Production_MT" IS NOT NULL AND "2023-24_Production_MT" != ''
-                AND District_Division != 'Bangladesh' AND District_Division NOT LIKE '%Division'
-                AND District_Division NOT LIKE '%Divison'
-                ORDER BY CAST("2023-24_Production_MT" AS REAL) DESC
-                LIMIT 10
-            """
-            results = query_db(query)
-            results = clean_results(results)
-
+            if not table_name:
+                flash(f"No table found for {crop} / {variety}", 'warning')
+            else:
+                prod_col = find_production_column(table_name)
+                district_col = find_district_column(table_name) or 'District_Division'
+                if not prod_col:
+                    flash(f"No production column found in {table_name}", 'warning')
+                else:
+                    query = f"""
+                        SELECT "{district_col}" AS District_Division, "{prod_col}" AS Production
+                        FROM "{table_name}"
+                        WHERE "{prod_col}" IS NOT NULL AND TRIM("{prod_col}") != ''
+                        AND "{district_col}" != 'Bangladesh' AND "{district_col}" NOT LIKE '%Division'
+                        AND "{district_col}" NOT LIKE '%Divison'
+                        ORDER BY CAST("{prod_col}" AS REAL) DESC
+                        LIMIT 10
+                    """
+                    results = query_db(query)
+                    results = clean_results(results)
 
         elif 'submit_top_crops' in request.form:
             result_type = 'top_crops'
             district = request.form.get('district')
 
-            query = """
-                SELECT 'Aus Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM aus_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Aman Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM aman_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Boro Rice' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM boro_total_by_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            UNION ALL
-            SELECT 'Wheat' AS Crop, CAST("2023-24_Production_MT" AS REAL) AS Production
-            FROM wheat_estimates_district
-            WHERE District_Division = :district
-            AND "2023-24_Production_MT" IS NOT NULL
-            AND TRIM("2023-24_Production_MT") != ''
-            AND "2023-24_Production_MT" GLOB '[0-9]*'
-            AND "2023-24_Production_MT" GLOB '*[0-9]*'
-            AND "2023-24_Production_MT" NOT GLOB '*[^0-9.]*'
-            ORDER BY Production DESC
-            """
-            results = query_db(query, {'district': district})
-            results = clean_results(results)
+            parts = []
+            for crop in AVAILABLE_MAJOR_CROPS:
+                table = find_table_for_crop(crop)
+                if not table:
+                    continue
+                prod_col = find_production_column(table)
+                district_col = find_district_column(table)
+                if not prod_col or not district_col:
+                    continue
+                part = f"""SELECT '{crop}' AS Crop, CAST("{prod_col}" AS REAL) AS Production
+                           FROM "{table}"
+                           WHERE "{district_col}" = :district
+                           AND "{prod_col}" IS NOT NULL
+                           AND TRIM("{prod_col}") != ''
+                           AND "{prod_col}" GLOB '[0-9]*'
+                           AND "{prod_col}" GLOB '*[0-9]*'
+                           AND "{prod_col}" NOT GLOB '*[^0-9.]*'"""
+                parts.append(part)
+
+            if not parts:
+                flash("No crop production data found for the selected district.", 'warning')
+            else:
+                union_sql = " UNION ALL ".join(parts) + " ORDER BY Production DESC"
+                results = query_db(union_sql, {'district': district})
+                results = clean_results(results)
 
     return render_template('top_crop_district.html',
                            available_crops=AVAILABLE_MAJOR_CROPS,
                            districts=districts,
                            results=results,
                            result_type=result_type)
+
+
+
 
 @app.route('/pie_charts')
 def pie_charts():
