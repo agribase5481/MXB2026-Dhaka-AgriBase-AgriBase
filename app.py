@@ -286,5 +286,13 @@ def pie_charts():
 
     return render_template('pie_charts.html', all_chart_data=all_chart_data)
 
+# --- AI CHATBOT ROUTES ---
+
+@app.route('/ai_chatbot')
+def ai_chatbot():
+    """AI Chatbot page"""
+    # The name of this function, 'ai_chatbot', is the endpoint name
+    return render_template('ai_chatbot.html')
+
 if __name__ == '__main__':
     app.run(debug=True)
